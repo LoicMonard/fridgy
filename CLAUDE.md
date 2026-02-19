@@ -75,3 +75,79 @@ Détail complet dans `frigo-app-design.md` section 5.
 ## Issues GitHub
 Toutes les tâches sont trackées sur https://github.com/LoicMonard/fridgy/issues (21 issues).
 Travailler dans l'ordre des issues quand possible.
+
+---
+
+## Git Flow
+
+### Branches
+```
+main        → code stable uniquement, protégée (jamais de push direct)
+develop     → branche d'intégration, base de toutes les features
+feature/    → une feature = une branche depuis develop
+fix/        → un bugfix = une branche depuis develop
+chore/      → maintenance, config, docs
+```
+
+**Nommage des branches :**
+```
+feature/issue-{numéro}-{description-courte}
+fix/issue-{numéro}-{description-courte}
+chore/{description-courte}
+
+Exemples :
+  feature/issue-3-expo-router-setup
+  feature/issue-9-barcode-scanning
+  fix/issue-11-stock-list-peremption
+  chore/update-dependencies
+```
+
+### Workflow par issue
+```
+1. Assigner l'issue à soi-même sur GitHub
+2. Créer la branche depuis develop :
+     git checkout develop && git pull
+     git checkout -b feature/issue-{N}-{description}
+3. Développer + commiter régulièrement
+4. Ouvrir une PR vers develop avec "Closes #N" dans la description
+5. Merger la PR → l'issue se ferme automatiquement
+6. Supprimer la branche après merge
+```
+
+### Conventions de commits (Conventional Commits)
+```
+feat(scope):     nouvelle feature
+fix(scope):      correction de bug
+chore(scope):    maintenance, config, dépendances
+docs(scope):     documentation
+refactor(scope): refactoring sans changement de comportement
+style(scope):    formatage uniquement
+
+Exemples :
+  feat(auth): add Google Sign In native integration
+  feat(stock): implement barcode scan with Open Food Facts
+  fix(recipes): correct scoring query for optional ingredients
+  chore(deps): install expo-router and configure navigation
+  docs(setup): add Supabase schema SQL file
+```
+
+**Règles :**
+- Message en anglais
+- Scope = nom de la feature (auth, stock, recipes, scanning, notifications, foyer, i18n...)
+- Corps du message si besoin d'expliquer le "pourquoi"
+- Toujours référencer l'issue dans le commit ou la PR
+
+### Releases (develop → main)
+```
+Quand develop est stable et testable :
+  git checkout main
+  git merge develop --no-ff
+  git tag v0.x.0
+  git push && git push --tags
+```
+
+### Règles absolues
+- Ne jamais push directement sur `main`
+- Ne jamais commiter `.env` ou les clés API
+- Toujours partir d'une issue avant de créer une branche
+- Un PR = une issue = une branche
