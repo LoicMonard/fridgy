@@ -14,29 +14,108 @@ Cible : marché français. Solo dev. Design complet dans `frigo-app-design.md`.
 - **Monétisation** : AdMob (bannières) + react-native-iap (one-time "Remove Ads")
 
 ## Structure des dossiers
+
+Architecture **Feature-based + Atomic Design hybride** :
+- `components/` → composants UI génériques (Atomic Design)
+- `features/` → logique métier par domaine (hooks, services, composants spécifiques)
+
 ```
 fridgy/
-├── app/                  # expo-router (screens)
-│   ├── (tabs)/           # tab bar navigation
-│   │   ├── index.tsx     # Accueil
-│   │   ├── stock.tsx     # Stock
-│   │   ├── add.tsx       # Ajouter
-│   │   ├── recipes.tsx   # Recettes
-│   │   └── settings.tsx  # Réglages
-│   └── (auth)/           # auth screens
-├── components/           # composants réutilisables
-├── features/             # logique métier par feature
+├── app/                        # expo-router (screens — UI only, logique dans features/)
+│   ├── (tabs)/
+│   │   ├── index.tsx           # Accueil
+│   │   ├── stock.tsx           # Stock
+│   │   ├── add.tsx             # Ajouter
+│   │   ├── recipes.tsx         # Recettes
+│   │   └── settings.tsx        # Réglages
+│   └── (auth)/
+│       ├── login.tsx
+│       └── register.tsx
+├── components/                 # Atomic Design — UI générique et réutilisable
+│   ├── atoms/                  # Button, Input, Badge, Text, Icon
+│   ├── molecules/              # ProductCard, RecipeCard, ExpiryBadge, ScanButton
+│   └── organisms/              # StockList, RecipeGrid, TabBar
+├── features/                   # Logique métier par domaine
 │   ├── auth/
+│   │   ├── components/         # LoginForm, RegisterForm (organisms spécifiques)
+│   │   ├── hooks/              # useAuth, useSession
+│   │   ├── services/           # authService.ts (appels Supabase)
+│   │   └── types.ts
 │   ├── stock/
+│   │   ├── components/
+│   │   ├── hooks/              # useStock, useExpiry
+│   │   ├── services/           # stockService.ts
+│   │   ├── utils/              # expiryUtils.ts ← TESTÉ
+│   │   └── types.ts
 │   ├── recipes/
-│   └── scanning/
+│   │   ├── components/
+│   │   ├── hooks/              # useRecipes, useScoring
+│   │   ├── services/           # recipesService.ts, scoringService.ts
+│   │   ├── utils/              # scoringUtils.ts ← TESTÉ
+│   │   └── types.ts
+│   ├── scanning/
+│   │   ├── hooks/              # useBarcodeScan, useReceiptScan
+│   │   ├── services/           # openFoodFactsService.ts, ocrService.ts
+│   │   └── types.ts
+│   └── foyer/
+│       ├── hooks/              # useFoyer
+│       ├── services/           # foyerService.ts
+│       └── types.ts
 ├── lib/
-│   ├── supabase.ts       # client Supabase
-│   └── i18n/             # config i18n + locales
+│   ├── supabase.ts             # client Supabase
+│   └── i18n/                  # config i18n + locales/fr.json
 ├── supabase/
-│   └── schema.sql        # schéma DB complet
-└── scripts/              # seed recettes, etc.
+│   └── schema.sql              # schéma DB complet
+├── scripts/                    # seed recettes batch LLM
+└── __tests__/                  # tests unitaires (Jest)
+    ├── stock/
+    │   └── expiryUtils.test.ts
+    └── recipes/
+        └── scoringUtils.test.ts
 ```
+
+### Règles d'architecture
+- Les **screens** (`app/`) ne contiennent que du JSX — zéro logique métier
+- La logique vit dans les **hooks** (`useStock`, `useRecipes`...)
+- Les appels Supabase sont isolés dans les **services** (`stockService.ts`)
+- Les **utils** contiennent la logique pure (sans side effects) → ce sont eux qui sont testés
+- Les **atoms** ne connaissent pas Supabase, les features, ni i18n
+
+## Stratégie de tests
+
+### Philosophie : teste le modèle, pas la vue
+
+**TDD obligatoire sur la logique métier critique** — écris le test avant le code pour :
+- `scoringUtils.ts` → algorithme de scoring des recettes (cœur du produit)
+- `expiryUtils.ts` → calculs J-3, J-1, badges de péremption
+- `ingredientUtils.ts` → normalisation des ingrédients (pluriels, synonymes)
+- `stockUtils.ts` → décrément du stock après "J'ai cuisiné ça"
+
+**Ne pas tester en MVP :**
+- Composants UI (trop fragiles, trop coûteux)
+- Requêtes Supabase (tests d'intégration → v2)
+- Flows E2E (Maestro → post-MVP)
+
+### Stack de tests
+- **Jest** (inclus avec Expo) → runner
+- **React Native Testing Library** → si tests de composants nécessaires plus tard
+
+### Quand écrire les tests
+- **Avant d'implémenter** les utils métier (TDD)
+- **Jamais après** : la dette de test ne se rembourse pas
+
+### Exemple
+```typescript
+// __tests__/recipes/scoringUtils.test.ts
+describe('scoringRecipe', () => {
+  it('retourne 1.0 si tous les ingrédients requis sont présents', () => { ... })
+  it('retourne 0.5 si la moitié des ingrédients requis sont présents', () => { ... })
+  it('ignore les ingrédients optionnels dans le score', () => { ... })
+  it('retourne 0 si aucun ingrédient ne matche', () => { ... })
+})
+```
+
+---
 
 ## Conventions
 - **TypeScript strict** — pas de `any`
