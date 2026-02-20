@@ -207,10 +207,15 @@ Exemples :
      git checkout develop && git pull
      git checkout -b feature/issue-{N}-{description}
 3. Développer + commiter régulièrement
-4. Ouvrir une PR vers develop avec "Closes #N" dans la description
-5. Merger la PR → l'issue se ferme automatiquement
-6. Supprimer la branche après merge
+4. Ouvrir une PR vers develop avec "Refs #N" dans la description
+5. Squash-merger la PR avec --delete-branch
+6. Fermer l'issue manuellement : gh issue close N --comment "Done via PR #X"
+7. Revenir sur develop et pull
 ```
+
+> **Note :** `Closes #N` ne ferme l'issue automatiquement que lors d'un merge
+> dans la branche par défaut (`main`). Comme les PRs ciblent `develop`,
+> il faut fermer les issues manuellement après merge.
 
 ### Conventions de commits (Conventional Commits)
 
