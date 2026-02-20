@@ -37,6 +37,34 @@
     "scanReceipt": "Scanner un ticket de caisse",
     "manual": "Ajouter manuellement"
   },
+  "scan": {
+    "title": "Scanner un code-barres",
+    "hint": "Pointez la caméra vers le code-barres",
+    "searching": "Recherche du produit…",
+    "errorNetwork": "Impossible de récupérer le produit. Vérifiez votre connexion.",
+    "cameraPermission": "L'accès à la caméra est nécessaire pour scanner un code-barres.",
+    "grantPermission": "Autoriser la caméra"
+  },
+  "productConfirm": {
+    "title": "Confirmer le produit",
+    "notFound": "Produit introuvable dans Open Food Facts. Renseignez les informations manuellement.",
+    "nom": "Nom du produit",
+    "nomPlaceholder": "Ex : Lait demi-écrémé",
+    "marque": "Marque",
+    "quantite": "Quantité",
+    "unite": "Unité",
+    "datePeremption": "Date de péremption (optionnel)",
+    "lieu": "Rangement",
+    "frigo": "Frigo",
+    "placard": "Placard",
+    "congelateur": "Congélateur",
+    "addToStock": "Ajouter au stock",
+    "errorNomRequired": "Le nom du produit est obligatoire.",
+    "errorQuantite": "La quantité doit être un nombre positif.",
+    "errorDateFormat": "Format de date invalide. Utilisez JJ/MM/AAAA.",
+    "errorNotLoggedIn": "Vous devez être connecté pour ajouter un produit.",
+    "errorNoFoyer": "Aucun foyer associé à votre compte."
+  },
   "recipes": {
     "title": "Recettes",
     "emptyState": "Aucune recette trouvée",
