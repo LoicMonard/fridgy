@@ -1,10 +1,12 @@
 # Fridgy — Instructions pour Claude Code
 
 ## Présentation du projet
+
 Application mobile B2C de gestion de stock frigo/placard avec suggestions de recettes.
 Cible : marché français. Solo dev. Design complet dans `frigo-app-design.md`.
 
 ## Stack
+
 - **Mobile** : React Native + Expo (Dev Build obligatoire, pas Expo Go)
 - **Backend** : Supabase (Postgres + Auth) — Supabase-first, pas de local-first
 - **Navigation** : expo-router (tab bar 5 onglets)
@@ -16,6 +18,7 @@ Cible : marché français. Solo dev. Design complet dans `frigo-app-design.md`.
 ## Structure des dossiers
 
 Architecture **Feature-based + Atomic Design hybride** :
+
 - `components/` → composants UI génériques (Atomic Design)
 - `features/` → logique métier par domaine (hooks, services, composants spécifiques)
 
@@ -75,6 +78,7 @@ fridgy/
 ```
 
 ### Règles d'architecture
+
 - Les **screens** (`app/`) ne contiennent que du JSX — zéro logique métier
 - La logique vit dans les **hooks** (`useStock`, `useRecipes`...)
 - Les appels Supabase sont isolés dans les **services** (`stockService.ts`)
@@ -86,25 +90,30 @@ fridgy/
 ### Philosophie : teste le modèle, pas la vue
 
 **TDD obligatoire sur la logique métier critique** — écris le test avant le code pour :
+
 - `scoringUtils.ts` → algorithme de scoring des recettes (cœur du produit)
 - `expiryUtils.ts` → calculs J-3, J-1, badges de péremption
 - `ingredientUtils.ts` → normalisation des ingrédients (pluriels, synonymes)
 - `stockUtils.ts` → décrément du stock après "J'ai cuisiné ça"
 
 **Ne pas tester en MVP :**
+
 - Composants UI (trop fragiles, trop coûteux)
 - Requêtes Supabase (tests d'intégration → v2)
 - Flows E2E (Maestro → post-MVP)
 
 ### Stack de tests
+
 - **Jest** (inclus avec Expo) → runner
 - **React Native Testing Library** → si tests de composants nécessaires plus tard
 
 ### Quand écrire les tests
+
 - **Avant d'implémenter** les utils métier (TDD)
 - **Jamais après** : la dette de test ne se rembourse pas
 
 ### Exemple
+
 ```typescript
 // __tests__/recipes/scoringUtils.test.ts
 describe('scoringRecipe', () => {
@@ -118,6 +127,7 @@ describe('scoringRecipe', () => {
 ---
 
 ## Conventions
+
 - **TypeScript strict** — pas de `any`
 - **i18n obligatoire** — aucune string UI hardcodée, tout passe par `t('clé')`
 - **Supabase-first** — toutes les données en base, pas de state local persistant
@@ -125,7 +135,9 @@ describe('scoringRecipe', () => {
 - **RLS activé** — chaque requête Supabase est protégée par Row Level Security
 
 ## Variables d'environnement
+
 Voir `.env.example` — ne jamais commiter les vraies clés.
+
 ```
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
@@ -133,6 +145,7 @@ GEMINI_API_KEY=        # côté Vercel Edge Function uniquement
 ```
 
 ## Commandes utiles
+
 ```bash
 npm run start          # démarrer le dev server
 npm run android        # lancer sur Android
@@ -140,11 +153,13 @@ npm run ios            # lancer sur iOS
 ```
 
 ## Data model (résumé)
+
 10 tables Supabase : `profiles`, `foyers`, `foyer_membres`, `produits`, `stock_items`,
 `ingredients`, `ingredient_synonymes`, `recettes`, `recette_ingredients`, `foyer_recettes_favorites`.
 Détail complet dans `frigo-app-design.md` section 5.
 
 ## Décisions importantes
+
 - **Pas de local-first** : l'app nécessite une connexion
 - **Instructions recettes relatives** : "la moitié des carottes" pas "3 carottes" (pas de scaling LLM en MVP)
 - **Scoring recettes côté serveur** : requête SQL avec score ≥ 0.5, LIMIT 10 — jamais côté client
@@ -152,6 +167,7 @@ Détail complet dans `frigo-app-design.md` section 5.
 - **Social login natif** : nécessite Dev Build, pas Expo Go
 
 ## Issues GitHub
+
 Toutes les tâches sont trackées sur https://github.com/LoicMonard/fridgy/issues (21 issues).
 Travailler dans l'ordre des issues quand possible.
 
@@ -160,6 +176,7 @@ Travailler dans l'ordre des issues quand possible.
 ## Git Flow
 
 ### Branches
+
 ```
 main        → code stable uniquement, protégée (jamais de push direct)
 develop     → branche d'intégration, base de toutes les features
@@ -169,6 +186,7 @@ chore/      → maintenance, config, docs
 ```
 
 **Nommage des branches :**
+
 ```
 feature/issue-{numéro}-{description-courte}
 fix/issue-{numéro}-{description-courte}
@@ -182,6 +200,7 @@ Exemples :
 ```
 
 ### Workflow par issue
+
 ```
 1. Assigner l'issue à soi-même sur GitHub
 2. Créer la branche depuis develop :
@@ -194,6 +213,7 @@ Exemples :
 ```
 
 ### Conventions de commits (Conventional Commits)
+
 ```
 feat(scope):     nouvelle feature
 fix(scope):      correction de bug
@@ -211,12 +231,14 @@ Exemples :
 ```
 
 **Règles :**
+
 - Message en anglais
 - Scope = nom de la feature (auth, stock, recipes, scanning, notifications, foyer, i18n...)
 - Corps du message si besoin d'expliquer le "pourquoi"
 - Toujours référencer l'issue dans le commit ou la PR
 
 ### Releases (develop → main)
+
 ```
 Quand develop est stable et testable :
   git checkout main
@@ -226,6 +248,7 @@ Quand develop est stable et testable :
 ```
 
 ### Règles absolues
+
 - Ne jamais push directement sur `main`
 - Ne jamais commiter `.env` ou les clés API
 - Toujours partir d'une issue avant de créer une branche

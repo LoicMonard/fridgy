@@ -36,19 +36,19 @@ Application mobile B2C de gestion de stock frigo/placard, ciblant le marché fra
 
 ## 4. Stack Technique
 
-| Composant | Choix | Raison |
-|---|---|---|
-| Mobile | React Native + Expo (Dev Build) | Cross-platform, familier, build simplifié |
-| Backend | Supabase (Postgres + Auth) | Gratuit, scalable, API auto-générée |
-| LLM proxy | Vercel Edge Function | Stateless, déploiement 10 min, gratuit |
-| LLM | Gemini Flash 2.0 | Free tier généreux, rapide |
-| Produits | Open Food Facts API | Gratuit, open source, millions de produits |
-| Scan barcode | expo-camera + barcode scanner | On-device, gratuit, aucun appel réseau |
-| OCR ticket | MLKit (react-native-mlkit-ocr) | On-device, gratuit |
-| Notifications | expo-notifications | Natif, pas de backend requis |
-| Auth sociale | @react-native-google-signin/google-signin + expo-apple-authentication | Login natif (pas web), obligatoire sur iOS pour Sign in with Apple |
-| i18n | i18next + react-i18next + expo-localization | Setup dès le départ, coût faible, retrofit douloureux |
-| Monétisation | AdMob + react-native-iap | Standards du marché |
+| Composant     | Choix                                                                 | Raison                                                             |
+| ------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Mobile        | React Native + Expo (Dev Build)                                       | Cross-platform, familier, build simplifié                          |
+| Backend       | Supabase (Postgres + Auth)                                            | Gratuit, scalable, API auto-générée                                |
+| LLM proxy     | Vercel Edge Function                                                  | Stateless, déploiement 10 min, gratuit                             |
+| LLM           | Gemini Flash 2.0                                                      | Free tier généreux, rapide                                         |
+| Produits      | Open Food Facts API                                                   | Gratuit, open source, millions de produits                         |
+| Scan barcode  | expo-camera + barcode scanner                                         | On-device, gratuit, aucun appel réseau                             |
+| OCR ticket    | MLKit (react-native-mlkit-ocr)                                        | On-device, gratuit                                                 |
+| Notifications | expo-notifications                                                    | Natif, pas de backend requis                                       |
+| Auth sociale  | @react-native-google-signin/google-signin + expo-apple-authentication | Login natif (pas web), obligatoire sur iOS pour Sign in with Apple |
+| i18n          | i18next + react-i18next + expo-localization                           | Setup dès le départ, coût faible, retrofit douloureux              |
+| Monétisation  | AdMob + react-native-iap                                              | Standards du marché                                                |
 
 > **Expo Development Build requis** (pas Expo Go) pour les social logins natifs. Standard pour toute app en production.
 
@@ -156,17 +156,13 @@ foyer_recettes_favorites
       "ordre": 1,
       "instruction": "Coupez la moitié des carottes en petits morceaux pour la sauce",
       "duration_minutes": 5,
-      "ingredients": [
-        { "tag": "carotte", "quantite": 3, "unite": "pièce" }
-      ]
+      "ingredients": [{ "tag": "carotte", "quantite": 3, "unite": "pièce" }]
     },
     {
       "ordre": 2,
       "instruction": "Coupez le reste des carottes en gros morceaux pour le plat",
       "duration_minutes": 5,
-      "ingredients": [
-        { "tag": "carotte", "quantite": 3, "unite": "pièce" }
-      ]
+      "ingredients": [{ "tag": "carotte", "quantite": 3, "unite": "pièce" }]
     }
   ]
 }
@@ -240,6 +236,7 @@ CREATE INDEX idx_recette_ingredients_tag ON recette_ingredients(ingredient_tag);
 ## 8. Navigation & Écrans
 
 ### Tab bar principale
+
 ```
 🏠 Accueil  |  📦 Stock  |  ➕ Ajouter  |  🍳 Recettes  |  ⚙️ Réglages
 ```
@@ -247,33 +244,39 @@ CREATE INDEX idx_recette_ingredients_tag ON recette_ingredients(ingredient_tag);
 ### Détail des écrans
 
 **Accueil**
+
 - Alertes produits expirant dans les 3 jours (J-3, J-1)
 - Raccourci "Qu'est-ce que je cuisine ?"
 - Derniers produits ajoutés
 
 **Stock**
+
 - Liste par lieu : Frigo / Congélateur / Placard
 - Badge coloré de péremption sur chaque item
 - Swipe pour modifier quantité ou supprimer
 
 **Ajouter** (bottom sheet)
+
 - Scan code-barres
 - Scan ticket de caisse
 - Saisie manuelle
 
 **Recettes**
+
 - Suggestions scorées (% affiché)
 - Ingrédients manquants → ajout à liste de courses
 - Onglet Favoris du foyer
 - Détail : ingrédients + étapes + bouton "J'ai cuisiné ça"
 
 **Réglages**
+
 - Gérer le foyer (inviter des membres via lien/code)
 - Préférences alimentaires
 - Paramètres notifications
 - Supprimer les pubs (IAP)
 
 ### Flow critique : "J'ai cuisiné ça"
+
 ```
 Tap bouton → affiche les ingrédients utilisés avec quantités
 → utilisateur confirme
@@ -296,23 +299,23 @@ Tap bouton → affiche les ingrédients utilisés avec quantités
 
 ## 10. Decision Log
 
-| Décision | Alternatives écartées | Raison |
-|---|---|---|
-| Supabase-first (pas local-first) | SQLite + sync custom | Trop complexe pour un solo dev MVP |
-| Comptes obligatoires dès le départ | Mode anonyme | Nécessaire pour foyer partagé + favoris |
-| Scan ticket via OCR + LLM | Matching direct Open Food Facts | Noms de produits trop abrégés sur tickets |
-| LLM via Vercel Edge Function | LLM on-device | Précision, simplicité, free tier généreux |
-| JSONB pour instructions recettes | Schéma relationnel normalisé | Gestion des quantités par étape, flexible |
-| Table `recette_ingredients` séparée du JSONB | Scoring depuis JSONB | Performance du scoring SQL |
-| Instructions relatives (pas scalées) | Templating, regénération LLM à l'affichage | MVP : 80% valeur sans complexité |
-| Modèle foyer dès le départ | user_id migré plus tard | Migration trop coûteuse à faire après |
-| Free + pub + IAP remove ads | Abonnement, app payante | Pas de friction au download, LTV réaliste |
-| Seed 200-300 recettes avant lancement | Cold start naturel | Évite appels LLM massifs pour les 1000 premiers users |
-| Scoring SQL côté serveur | Scoring côté client | Ne pas rapatrier toutes les recettes |
-| Score flexible (≥ 50%) | Seuil strict 100% | Meilleure UX, recettes "presque faisables" visibles |
-| Social login natif (@react-native-google-signin + expo-apple-authentication) | OAuth web via expo-auth-session | UX native identique à Capacitor, pas de browser popup |
-| i18n dès le départ (i18next) | Retrofit plus tard | Coût faible au départ, très douloureux à ajouter après |
-| Colonne `langue` sur recettes | Table de traductions séparée | Simple pour MVP, extensible pour marchés internationaux |
+| Décision                                                                     | Alternatives écartées                      | Raison                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------- |
+| Supabase-first (pas local-first)                                             | SQLite + sync custom                       | Trop complexe pour un solo dev MVP                      |
+| Comptes obligatoires dès le départ                                           | Mode anonyme                               | Nécessaire pour foyer partagé + favoris                 |
+| Scan ticket via OCR + LLM                                                    | Matching direct Open Food Facts            | Noms de produits trop abrégés sur tickets               |
+| LLM via Vercel Edge Function                                                 | LLM on-device                              | Précision, simplicité, free tier généreux               |
+| JSONB pour instructions recettes                                             | Schéma relationnel normalisé               | Gestion des quantités par étape, flexible               |
+| Table `recette_ingredients` séparée du JSONB                                 | Scoring depuis JSONB                       | Performance du scoring SQL                              |
+| Instructions relatives (pas scalées)                                         | Templating, regénération LLM à l'affichage | MVP : 80% valeur sans complexité                        |
+| Modèle foyer dès le départ                                                   | user_id migré plus tard                    | Migration trop coûteuse à faire après                   |
+| Free + pub + IAP remove ads                                                  | Abonnement, app payante                    | Pas de friction au download, LTV réaliste               |
+| Seed 200-300 recettes avant lancement                                        | Cold start naturel                         | Évite appels LLM massifs pour les 1000 premiers users   |
+| Scoring SQL côté serveur                                                     | Scoring côté client                        | Ne pas rapatrier toutes les recettes                    |
+| Score flexible (≥ 50%)                                                       | Seuil strict 100%                          | Meilleure UX, recettes "presque faisables" visibles     |
+| Social login natif (@react-native-google-signin + expo-apple-authentication) | OAuth web via expo-auth-session            | UX native identique à Capacitor, pas de browser popup   |
+| i18n dès le départ (i18next)                                                 | Retrofit plus tard                         | Coût faible au départ, très douloureux à ajouter après  |
+| Colonne `langue` sur recettes                                                | Table de traductions séparée               | Simple pour MVP, extensible pour marchés internationaux |
 
 ---
 
