@@ -1,0 +1,54 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "confirm": "Confirmer",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "search": "Rechercher",
+    "add": "Ajouter",
+    "edit": "Modifier",
+    "back": "Retour",
+    "close": "Fermer"
+  },
+  "tabs": {
+    "home": "Accueil",
+    "stock": "Stock",
+    "add": "Ajouter",
+    "recipes": "Recettes",
+    "settings": "Réglages"
+  },
+  "home": {
+    "title": "Accueil",
+    "welcome": "Bienvenue sur Fridgy",
+    "emptyState": "Commencez par ajouter des produits à votre stock"
+  },
+  "stock": {
+    "title": "Mon stock",
+    "emptyState": "Votre stock est vide",
+    "addProduct": "Ajouter un produit",
+    "expiringProducts": "Produits bientôt périmés"
+  },
+  "add": {
+    "title": "Ajouter",
+    "scan": "Scanner un code-barres",
+    "scanReceipt": "Scanner un ticket de caisse",
+    "manual": "Ajouter manuellement"
+  },
+  "recipes": {
+    "title": "Recettes",
+    "emptyState": "Aucune recette trouvée",
+    "search": "Rechercher une recette",
+    "ingredients": "Ingrédients",
+    "steps": "Étapes"
+  },
+  "settings": {
+    "title": "Réglages",
+    "language": "Langue",
+    "notifications": "Notifications",
+    "about": "À propos",
+    "logout": "Se déconnecter"
+  }
+}
