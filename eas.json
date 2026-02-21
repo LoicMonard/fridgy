@@ -10,10 +10,8 @@
       "ios": {
         "simulator": false
       },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
-      }
+      "env": {}
+
     },
     "preview": {
       "distribution": "internal",
@@ -25,16 +23,6 @@
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "appleId": "loicmonard@example.com",
-        "ascAppId": "",
-        "appleTeamId": ""
-      },
-      "android": {
-        "serviceAccountKeyPath": "./google-services-key.json",
-        "track": "internal"
-      }
-    }
+    "production": {}
   }
 }

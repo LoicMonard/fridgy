@@ -15,7 +15,10 @@
     "scheme": "fridgy",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.loicmonard.fridgy"
+      "bundleIdentifier": "com.loicmonard.fridgy",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.loicmonard.fridgy",
@@ -24,7 +27,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -46,9 +53,15 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.$(GOOGLE_IOS_CLIENT_ID_REVERSED)"
+          "iosUrlScheme": "com.googleusercontent.apps.1068503426751-pl3cib3g60llhit4ltahiaeb5t57v5ca"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "195f312a-3f06-4938-8420-28a455a7637d"
+      }
+    }
   }
 }
