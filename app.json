@@ -42,6 +42,12 @@
           "cameraPermission": "Fridgy a besoin de la caméra pour scanner les codes-barres.",
           "microphonePermission": false
         }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.$(GOOGLE_IOS_CLIENT_ID_REVERSED)"
+        }
       ]
     ]
   }
