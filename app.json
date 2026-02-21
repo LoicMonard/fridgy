@@ -33,7 +33,14 @@
     },
     "plugins": [
       "expo-localization",
-      "expo-router"
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Fridgy a besoin de la caméra pour scanner les codes-barres.",
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

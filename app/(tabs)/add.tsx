@@ -1,6 +1,7 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 export default function AddScreen() {
@@ -12,7 +13,7 @@ export default function AddScreen() {
         <Text style={styles.title}>{t('add.title')}</Text>
       </View>
       <View style={styles.options}>
-        <TouchableOpacity style={styles.option}>
+        <TouchableOpacity style={styles.option} onPress={() => router.push('/add/scan-barcode')}>
           <View style={[styles.iconBox, { backgroundColor: '#FFF3E0' }]}>
             <Ionicons name="barcode-outline" size={26} color="#FF8400" />
           </View>
