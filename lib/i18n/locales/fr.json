@@ -93,7 +93,8 @@
     "errorPasswordTooShort": "Le mot de passe doit contenir au moins 8 caractères.",
     "errorPasswordMismatch": "Les mots de passe ne correspondent pas.",
     "errorRateLimit": "Trop de tentatives. Veuillez réessayer dans quelques minutes.",
-    "errorGeneric": "Une erreur est survenue. Veuillez réessayer."
+    "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
+    "orEmail": "ou avec votre email"
   },
   "recipes": {
     "title": "Recettes",
