@@ -6,3 +6,8 @@ dist/
 .env.*.local
 coverage/
 frigo-app-design.pen
+
+# EAS / Google Services (secrets)
+google-services.json
+google-services-key.json
+GoogleService-Info.plist
