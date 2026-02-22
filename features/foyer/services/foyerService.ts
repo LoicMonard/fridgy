@@ -13,43 +13,24 @@ export async function getUserFoyer(userId: string): Promise<{ id: string; nom: s
 }
 
 export async function createFoyer(nom: string, userId: string): Promise<string> {
-  // Insert foyer
-  const { data: foyer, error: foyerError } = await supabase
-    .from('foyers')
-    .insert({ nom: nom.trim(), created_by: userId })
-    .select('id')
-    .single();
+  const { data, error } = await supabase.rpc('create_foyer', {
+    p_nom: nom.trim(),
+    p_user_id: userId,
+  });
 
-  if (foyerError) throw foyerError;
-
-  // Add user as admin
-  const { error: membreError } = await supabase
-    .from('foyer_membres')
-    .insert({ foyer_id: foyer.id, user_id: userId, role: 'admin' });
-
-  if (membreError) throw membreError;
-
-  return foyer.id as string;
+  if (error) throw error;
+  return data as string;
 }
 
 export async function joinFoyer(foyerId: string, userId: string): Promise<void> {
-  // Check foyer exists
-  const { data: foyer, error: checkError } = await supabase
-    .from('foyers')
-    .select('id')
-    .eq('id', foyerId.trim())
-    .maybeSingle();
-
-  if (checkError) throw checkError;
-  if (!foyer) throw new Error('FOYER_NOT_FOUND');
-
-  // Add user as membre
-  const { error } = await supabase
-    .from('foyer_membres')
-    .insert({ foyer_id: foyerId.trim(), user_id: userId, role: 'membre' });
+  const { error } = await supabase.rpc('join_foyer', {
+    p_foyer_id: foyerId.trim(),
+    p_user_id: userId,
+  });
 
   if (error) {
-    if (error.code === '23505') throw new Error('ALREADY_MEMBER');
+    if (error.message === 'FOYER_NOT_FOUND') throw new Error('FOYER_NOT_FOUND');
+    if (error.message === 'ALREADY_MEMBER') throw new Error('ALREADY_MEMBER');
     throw error;
   }
 }

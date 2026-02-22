@@ -38,7 +38,8 @@ export default function FoyerOnboardingScreen() {
       if (!session) return;
       await createFoyer(nom, session.user.id);
       router.replace('/(tabs)');
-    } catch {
+    } catch (err: any) {
+      console.error('[handleCreate]', err);
       Alert.alert(t('common.error'));
     } finally {
       setLoading(false);
