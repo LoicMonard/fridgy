@@ -12,7 +12,6 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { useReceiptScan } from '@/features/scanning/hooks/useReceiptScan';
 
 export default function ScanReceiptScreen() {
@@ -49,16 +48,11 @@ export default function ScanReceiptScreen() {
     if (capturing || processing) return;
     setCapturing(true);
     try {
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 1, base64: false });
-      if (photo?.uri) {
-        const resized = await ImageManipulator.manipulateAsync(
-          photo.uri,
-          [{ resize: { width: 1200 } }],
-          { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG, base64: true },
-        );
-        if (resized.base64) {
-          await processPhoto(resized.base64, 'image/jpeg');
-        }
+      // quality: 0.2 keeps JPEG ~100-300 KB (well under Supabase 2 MB limit)
+      // receipts are black text on white — readable at low compression
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.2, base64: true });
+      if (photo?.base64) {
+        await processPhoto(photo.base64, 'image/jpeg');
       }
     } finally {
       setCapturing(false);
