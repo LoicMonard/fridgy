@@ -9,9 +9,12 @@ interface EdgeFunctionItem {
   duree_conservation_jours: number | null;
 }
 
-export async function parseReceiptOcr(ocrText: string): Promise<ReceiptProduct[]> {
+export async function parseReceiptImage(
+  imageBase64: string,
+  mimeType = 'image/jpeg',
+): Promise<ReceiptProduct[]> {
   const { data, error } = await supabase.functions.invoke('parse-receipt', {
-    body: { ocrText },
+    body: { imageBase64, mimeType },
   });
 
   if (error) throw error;
