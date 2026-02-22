@@ -44,12 +44,10 @@ Deno.serve(async (req) => {
     });
   }
 
-  try {
-    // Verify JWT via Supabase Auth
-    const authHeader = req.headers.get('Authorization');
-    console.log('[parse-receipt] authHeader present:', !!authHeader);
-    console.log('[parse-receipt] authHeader prefix:', authHeader?.slice(0, 20));
+  const t0 = Date.now();
 
+  try {
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
         status: 401,
@@ -57,28 +55,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-    console.log('[parse-receipt] SUPABASE_URL set:', !!supabaseUrl);
-    console.log('[parse-receipt] SUPABASE_ANON_KEY set:', !!supabaseAnonKey);
-
-    const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '');
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    );
 
     const token = authHeader.replace('Bearer ', '');
-    console.log('[parse-receipt] token length:', token.length);
-
-    const { data: userData, error: authError } = await supabase.auth.getUser(token);
-    console.log('[parse-receipt] getUser error:', authError?.message ?? 'none');
-    console.log('[parse-receipt] getUser userId:', userData?.user?.id ?? 'null');
+    const tAuth0 = Date.now();
+    const { error: authError } = await supabase.auth.getUser(token);
+    console.log(`[parse-receipt] auth: ${Date.now() - tAuth0}ms`);
 
     if (authError) {
-      return new Response(JSON.stringify({ error: 'Unauthorized', detail: authError.message }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Parse request body — image sent as base64
     const { imageBase64, mimeType = 'image/jpeg' } =
       await req.json() as { imageBase64?: string; mimeType?: string };
 
@@ -89,10 +82,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Call Gemini Flash Vision
+    console.log(`[parse-receipt] image size: ${Math.round(imageBase64.length / 1024)}KB (base64)`);
+
     const geminiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
+    const tGemini0 = Date.now();
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -109,6 +104,7 @@ Deno.serve(async (req) => {
         },
       }),
     });
+    console.log(`[parse-receipt] gemini: ${Date.now() - tGemini0}ms`);
 
     if (!geminiRes.ok) {
       const err = await geminiRes.text();
@@ -132,6 +128,8 @@ Deno.serve(async (req) => {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    console.log(`[parse-receipt] total: ${Date.now() - t0}ms — ${items.length} items`);
 
     return new Response(JSON.stringify({ items }), {
       status: 200,
