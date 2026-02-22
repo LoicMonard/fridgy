@@ -97,28 +97,6 @@
     "orEmail": "ou avec votre email",
     "continueWithGoogle": "Continuer avec Google"
   },
-  "onboarding": {
-    "title": "Bienvenue sur Fridgy",
-    "subtitle": "Commencez par créer votre foyer ou rejoindre celui d'un proche.",
-    "createTitle": "Créer un foyer",
-    "createSubtitle": "Donnez un nom à votre foyer pour commencer à gérer votre stock.",
-    "joinTitle": "Rejoindre un foyer",
-    "joinSubtitle": "Saisissez le code d'invitation partagé par un membre du foyer.",
-    "createFoyer": "Créer un foyer",
-    "createFoyerDesc": "Nouveau foyer, nouvelles habitudes",
-    "joinFoyer": "Rejoindre un foyer",
-    "joinFoyerDesc": "Vous avez un code d'invitation ?",
-    "foyerName": "Nom du foyer",
-    "foyerNamePlaceholder": "Ex : Famille Dupont",
-    "createBtn": "Créer le foyer",
-    "inviteCode": "Code d'invitation",
-    "inviteCodePlaceholder": "Collez le code ici",
-    "inviteCodeHint": "Le code vous a été partagé par un membre du foyer.",
-    "joinBtn": "Rejoindre le foyer",
-    "errorNomRequired": "Le nom du foyer est obligatoire.",
-    "errorCodeRequired": "Le code d'invitation est obligatoire.",
-    "errorCodeInvalid": "Ce code d'invitation est invalide ou expiré."
-  },
   "recipes": {
     "title": "Recettes",
     "emptyState": "Aucune recette trouvée",
