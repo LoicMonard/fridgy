@@ -5,6 +5,8 @@ export default function AddLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="scan-barcode" />
       <Stack.Screen name="product-confirm" />
+      <Stack.Screen name="scan-receipt" />
+      <Stack.Screen name="receipt-confirm" />
     </Stack>
   );
 }

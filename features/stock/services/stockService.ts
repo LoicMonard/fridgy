@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { ScannedProduct, StockItemDraft } from '@/features/scanning/types';
+import type { ReceiptItemDraft, ScannedProduct, StockItemDraft } from '@/features/scanning/types';
 
 async function upsertProduit(scannedProduct: ScannedProduct): Promise<string> {
   const { ean, nom, marque, categorie, imageUrl } = scannedProduct;
@@ -52,4 +52,39 @@ export async function addToStock(
   });
 
   if (error) throw error;
+}
+
+export async function addReceiptItemsToStock(
+  items: ReceiptItemDraft[],
+  foyerId: string,
+  addedBy: string,
+): Promise<void> {
+  for (const item of items) {
+    const { data: produit, error: produitError } = await supabase
+      .from('produits')
+      .insert({ nom: item.nom, source: 'llm_ticket' })
+      .select('id')
+      .single();
+
+    if (produitError) throw produitError;
+
+    const expiryDate = item.dureeConservationJours
+      ? new Date(Date.now() + item.dureeConservationJours * 86_400_000)
+          .toISOString()
+          .split('T')[0]
+      : null;
+
+    const { error: stockError } = await supabase.from('stock_items').insert({
+      foyer_id: foyerId,
+      added_by: addedBy,
+      produit_id: produit.id,
+      ingredient_tag: item.ingredientTag ?? null,
+      quantite: item.quantite,
+      unite: item.unite,
+      date_peremption: expiryDate,
+      lieu: item.lieu,
+    });
+
+    if (stockError) throw stockError;
+  }
 }
