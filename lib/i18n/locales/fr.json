@@ -97,6 +97,26 @@
     "orEmail": "ou avec votre email",
     "continueWithGoogle": "Continuer avec Google"
   },
+  "receiptScan": {
+    "title": "Scanner un ticket",
+    "hint": "Cadrez le ticket de caisse en entier",
+    "readingText": "Lecture du ticket…",
+    "analyzing": "Analyse en cours…",
+    "errorTitle": "Problème de lecture",
+    "errorOcr": "Impossible de lire le ticket. Vérifiez l'éclairage et réessayez.",
+    "errorLlm": "L'analyse a échoué. Réessayez.",
+    "errorEmpty": "Aucun produit alimentaire détecté. Réessayez."
+  },
+  "receiptConfirm": {
+    "title": "Vérifier les produits",
+    "itemCount": "{{count}} produit détecté",
+    "itemCount_plural": "{{count}} produits détectés",
+    "lieu": "Rangement (pour tous)",
+    "addAll": "Ajouter {{count}} produit au stock",
+    "addAll_plural": "Ajouter {{count}} produits au stock",
+    "empty": "Aucun produit. Revenez en arrière et réessayez.",
+    "errorNoItems": "Aucun produit à ajouter."
+  },
   "recipes": {
     "title": "Recettes",
     "emptyState": "Aucune recette trouvée",

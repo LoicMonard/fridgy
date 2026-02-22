@@ -32,6 +32,15 @@ export interface ReceiptProduct {
 export type Lieu = 'frigo' | 'congelateur' | 'placard';
 export type Unite = 'pièce' | 'g' | 'kg' | 'ml' | 'L' | 'boîte' | 'sachet';
 
+export interface ReceiptItemDraft {
+  nom: string;
+  ingredientTag?: string;
+  quantite: number;
+  unite: string;
+  dureeConservationJours?: number;
+  lieu: Lieu;
+}
+
 export interface StockItemDraft {
   scannedProduct: ScannedProduct;
   quantite: number;

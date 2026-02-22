@@ -22,7 +22,7 @@ export default function AddScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
+        <TouchableOpacity style={styles.option} onPress={() => router.push('/add/scan-receipt')}>
           <View style={[styles.iconBox, { backgroundColor: '#E3F2FD' }]}>
             <Ionicons name="receipt-outline" size={26} color="#1565C0" />
           </View>
