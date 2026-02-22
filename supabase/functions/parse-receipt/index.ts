@@ -19,15 +19,15 @@ interface GeminiResponse {
   }>;
 }
 
-const SYSTEM_PROMPT = `Tu es un assistant qui analyse le texte brut extrait par OCR d'un ticket de caisse français.
-Tu dois identifier les produits alimentaires et retourner un tableau JSON.
+const PROMPT = `Tu es un assistant qui analyse une photo de ticket de caisse français.
+Identifie tous les produits alimentaires visibles et retourne un tableau JSON.
 
-Pour chaque produit alimentaire identifié, retourne un objet avec ces champs :
-- nom : string — nom lisible du produit (corrige les abréviations OCR, ex: "YAO FRT 4X125" → "Yaourt aux fruits 4x125g")
+Pour chaque produit alimentaire, retourne un objet avec ces champs :
+- nom : string — nom lisible (corrige les abréviations, ex: "YAO FRT 4X125" → "Yaourt aux fruits 4x125g")
 - ingredient_tag : string | null — tag normalisé en minuscules sans accents (ex: "yaourt", "lait", "beurre"), null si incertain
 - quantite_estimee : number — quantité estimée (défaut 1)
 - unite : string — "unite", "kg", "g", "L", "mL", "lot"
-- duree_conservation_jours : number | null — estimation de durée de conservation en jours selon le type de produit, null si inconnu
+- duree_conservation_jours : number | null — estimation selon le type de produit, null si inconnu
 
 Règles :
 - Ignore les articles non alimentaires (produits ménagers, hygiène, etc.)
@@ -35,7 +35,6 @@ Règles :
 - Retourne UNIQUEMENT le tableau JSON, sans texte autour`;
 
 Deno.serve(async (req) => {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -69,16 +68,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Parse request body
-    const { ocrText } = await req.json() as { ocrText?: string };
-    if (!ocrText?.trim()) {
-      return new Response(JSON.stringify({ error: 'Missing ocrText' }), {
+    // Parse request body — image sent as base64
+    const { imageBase64, mimeType = 'image/jpeg' } =
+      await req.json() as { imageBase64?: string; mimeType?: string };
+
+    if (!imageBase64) {
+      return new Response(JSON.stringify({ error: 'Missing imageBase64' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Call Gemini Flash
+    // Call Gemini Flash Vision
     const geminiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
@@ -86,8 +87,12 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ parts: [{ text: ocrText }] }],
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: mimeType, data: imageBase64 } },
+            { text: PROMPT },
+          ],
+        }],
         generationConfig: {
           temperature: 0.1,
           responseMimeType: 'application/json',

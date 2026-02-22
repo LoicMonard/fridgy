@@ -21,7 +21,7 @@ export default function ScanReceiptScreen() {
   const [capturing, setCapturing] = useState(false);
   const { step, items, error, processPhoto, reset } = useReceiptScan();
 
-  const processing = step === 'ocr' || step === 'llm';
+  const processing = step === 'processing';
 
   // Navigate once processing is done
   useEffect(() => {
@@ -38,8 +38,7 @@ export default function ScanReceiptScreen() {
       });
       reset();
     } else if (step === 'error') {
-      const msg = error === 'OCR_FAILED' ? t('receiptScan.errorOcr') : t('receiptScan.errorLlm');
-      Alert.alert(t('receiptScan.errorTitle'), msg, [
+      Alert.alert(t('receiptScan.errorTitle'), t('receiptScan.errorLlm'), [
         { text: t('common.retry'), onPress: reset },
       ]);
     }
@@ -49,9 +48,9 @@ export default function ScanReceiptScreen() {
     if (capturing || processing) return;
     setCapturing(true);
     try {
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 });
-      if (photo?.uri) {
-        await processPhoto(photo.uri);
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.6, base64: true });
+      if (photo?.base64) {
+        await processPhoto(photo.base64, 'image/jpeg');
       }
     } finally {
       setCapturing(false);
@@ -110,9 +109,7 @@ export default function ScanReceiptScreen() {
       {processing && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#FF8400" />
-          <Text style={styles.overlayText}>
-            {step === 'ocr' ? t('receiptScan.readingText') : t('receiptScan.analyzing')}
-          </Text>
+          <Text style={styles.overlayText}>{t('receiptScan.analyzing')}</Text>
         </View>
       )}
     </View>

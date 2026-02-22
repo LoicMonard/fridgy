@@ -100,10 +100,8 @@
   "receiptScan": {
     "title": "Scanner un ticket",
     "hint": "Cadrez le ticket de caisse en entier",
-    "readingText": "Lecture du ticket…",
     "analyzing": "Analyse en cours…",
     "errorTitle": "Problème de lecture",
-    "errorOcr": "Impossible de lire le ticket. Vérifiez l'éclairage et réessayez.",
     "errorLlm": "L'analyse a échoué. Réessayez.",
     "errorEmpty": "Aucun produit alimentaire détecté. Réessayez."
   },
