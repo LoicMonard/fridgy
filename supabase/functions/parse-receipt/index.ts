@@ -102,6 +102,9 @@ Deno.serve(async (req) => {
           temperature: 0.1,
           responseMimeType: 'application/json',
         },
+        thinkingConfig: {
+          thinkingBudget: 0,
+        },
       }),
     });
     console.log(`[parse-receipt] gemini: ${Date.now() - tGemini0}ms`);
