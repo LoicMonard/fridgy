@@ -11,7 +11,7 @@ Cible : marché français. Solo dev. Design complet dans `frigo-app-design.md`.
 - **Backend** : Supabase (Postgres + Auth) — Supabase-first, pas de local-first
 - **Navigation** : expo-router (tab bar 5 onglets)
 - **i18n** : i18next + react-i18next + expo-localization
-- **LLM proxy** : Vercel Edge Function + Gemini Flash 2.0
+- **LLM proxy** : Supabase Edge Functions + Gemini Flash 2.0
 - **Auth sociale** : @react-native-google-signin/google-signin + expo-apple-authentication (natif, pas web)
 - **Monétisation** : AdMob (bannières) + react-native-iap (one-time "Remove Ads")
 
@@ -141,7 +141,7 @@ Voir `.env.example` — ne jamais commiter les vraies clés.
 ```
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
-GEMINI_API_KEY=        # côté Vercel Edge Function uniquement
+GEMINI_API_KEY=        # côté Supabase Edge Functions uniquement (supabase secrets set)
 ```
 
 ## Commandes utiles
@@ -163,7 +163,7 @@ Détail complet dans `frigo-app-design.md` section 5.
 - **Pas de local-first** : l'app nécessite une connexion
 - **Instructions recettes relatives** : "la moitié des carottes" pas "3 carottes" (pas de scaling LLM en MVP)
 - **Scoring recettes côté serveur** : requête SQL avec score ≥ 0.5, LIMIT 10 — jamais côté client
-- **Ticket de caisse** : OCR on-device (MLKit) → Edge Function → Gemini Flash → confirmation utilisateur
+- **Ticket de caisse** : OCR on-device (MLKit) → Supabase Edge Function `parse-receipt` → Gemini Flash → confirmation utilisateur
 - **Social login natif** : nécessite Dev Build, pas Expo Go
 
 ## Issues GitHub
