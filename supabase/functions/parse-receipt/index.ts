@@ -1,7 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent';
 
 interface ParsedItem {
   nom: string;
@@ -47,6 +47,9 @@ Deno.serve(async (req) => {
   try {
     // Verify JWT via Supabase Auth
     const authHeader = req.headers.get('Authorization');
+    console.log('[parse-receipt] authHeader present:', !!authHeader);
+    console.log('[parse-receipt] authHeader prefix:', authHeader?.slice(0, 20));
+
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
         status: 401,
@@ -54,15 +57,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    console.log('[parse-receipt] SUPABASE_URL set:', !!supabaseUrl);
+    console.log('[parse-receipt] SUPABASE_ANON_KEY set:', !!supabaseAnonKey);
+
+    const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '');
 
     const token = authHeader.replace('Bearer ', '');
-    const { error: authError } = await supabase.auth.getUser(token);
+    console.log('[parse-receipt] token length:', token.length);
+
+    const { data: userData, error: authError } = await supabase.auth.getUser(token);
+    console.log('[parse-receipt] getUser error:', authError?.message ?? 'none');
+    console.log('[parse-receipt] getUser userId:', userData?.user?.id ?? 'null');
+
     if (authError) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized', detail: authError.message }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
       });
