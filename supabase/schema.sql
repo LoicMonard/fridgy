@@ -148,22 +148,44 @@ ALTER TABLE ingredient_synonymes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "profiles: own row" ON profiles
   FOR ALL USING (auth.uid() = id);
 
--- foyers : accès aux membres du foyer
-CREATE POLICY "foyers: members only" ON foyers
-  FOR ALL USING (
-    id IN (SELECT foyer_id FROM foyer_membres WHERE user_id = auth.uid())
-  );
+-- Helper : retourne les foyer_ids de l'utilisateur sans déclencher RLS (évite la récursion)
+CREATE OR REPLACE FUNCTION get_user_foyer_ids(uid uuid)
+RETURNS SETOF uuid
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT foyer_id FROM foyer_membres WHERE user_id = uid;
+$$;
 
--- foyer_membres : visibilité pour les membres du même foyer
-CREATE POLICY "foyer_membres: same foyer" ON foyer_membres
-  FOR ALL USING (
-    foyer_id IN (SELECT foyer_id FROM foyer_membres WHERE user_id = auth.uid())
-  );
+-- foyers : INSERT libre (authentifié), SELECT/UPDATE/DELETE via helper
+CREATE POLICY "foyers: insert authenticated" ON foyers
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "foyers: members select" ON foyers
+  FOR SELECT USING (id IN (SELECT get_user_foyer_ids(auth.uid())));
+
+CREATE POLICY "foyers: members update" ON foyers
+  FOR UPDATE USING (id IN (SELECT get_user_foyer_ids(auth.uid())));
+
+CREATE POLICY "foyers: members delete" ON foyers
+  FOR DELETE USING (id IN (SELECT get_user_foyer_ids(auth.uid())));
+
+-- foyer_membres : INSERT sur sa propre ligne, SELECT/DELETE via helper
+CREATE POLICY "foyer_membres: insert own" ON foyer_membres
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "foyer_membres: select same foyer" ON foyer_membres
+  FOR SELECT USING (foyer_id IN (SELECT get_user_foyer_ids(auth.uid())));
+
+CREATE POLICY "foyer_membres: delete same foyer" ON foyer_membres
+  FOR DELETE USING (foyer_id IN (SELECT get_user_foyer_ids(auth.uid())));
 
 -- stock_items : accès par foyer
 CREATE POLICY "stock_items: foyer members" ON stock_items
   FOR ALL USING (
-    foyer_id IN (SELECT foyer_id FROM foyer_membres WHERE user_id = auth.uid())
+    foyer_id IN (SELECT get_user_foyer_ids(auth.uid()))
   );
 
 -- produits : lecture publique (cache partagé), écriture authentifiée
@@ -197,7 +219,7 @@ CREATE POLICY "ingredient_synonymes: read all" ON ingredient_synonymes
 -- foyer_recettes_favorites : accès par foyer
 CREATE POLICY "favorites: foyer members" ON foyer_recettes_favorites
   FOR ALL USING (
-    foyer_id IN (SELECT foyer_id FROM foyer_membres WHERE user_id = auth.uid())
+    foyer_id IN (SELECT get_user_foyer_ids(auth.uid()))
   );
 
 -- ============================================================
