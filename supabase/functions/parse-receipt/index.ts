@@ -20,7 +20,7 @@ interface GroqResponse {
 }
 
 const PROMPT = `Tu es un assistant qui analyse une photo de ticket de caisse français.
-Identifie tous les produits alimentaires visibles et retourne un tableau JSON.
+Identifie tous les produits alimentaires visibles et retourne un objet JSON avec une clé "items" contenant un tableau.
 
 Pour chaque produit alimentaire, retourne un objet avec ces champs :
 - nom : string — nom lisible (corrige les abréviations, ex: "YAO FRT 4X125" → "Yaourt aux fruits 4x125g")
@@ -32,7 +32,7 @@ Pour chaque produit alimentaire, retourne un objet avec ces champs :
 Règles :
 - Ignore les articles non alimentaires (produits ménagers, hygiène, etc.)
 - Ignore les lignes de prix, totaux, remises
-- Retourne UNIQUEMENT le tableau JSON, sans texte autour`;
+- Retourne UNIQUEMENT ce format JSON : {"items": [...]}}`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -127,20 +127,23 @@ Deno.serve(async (req) => {
     }
 
     const groqData = await groqRes.json() as GroqResponse;
-    const rawText = groqData.choices?.[0]?.message?.content ?? '[]';
+    const rawText = groqData.choices?.[0]?.message?.content ?? '';
+    console.log('[parse-receipt] raw response:', rawText.slice(0, 300));
+
+    // Strip markdown code blocks if present
+    const cleaned = rawText.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim();
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(rawText);
+      parsed = JSON.parse(cleaned);
     } catch {
-      console.error('[parse-receipt] Failed to parse Groq JSON:', rawText);
-      return new Response(JSON.stringify({ error: 'PARSE_ERROR', raw: rawText }), {
+      console.error('[parse-receipt] Failed to parse JSON:', cleaned);
+      return new Response(JSON.stringify({ error: 'PARSE_ERROR', raw: cleaned }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Groq with json_object may return { items: [...] } or directly [...]
     const items: ParsedItem[] = Array.isArray(parsed)
       ? parsed as ParsedItem[]
       : (parsed as { items?: ParsedItem[] }).items ?? [];
