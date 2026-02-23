@@ -68,11 +68,12 @@ export async function addReceiptItemsToStock(
 
     if (produitError) throw produitError;
 
-    const expiryDate = item.dureeConservationJours
-      ? new Date(Date.now() + item.dureeConservationJours * 86_400_000)
-          .toISOString()
-          .split('T')[0]
-      : null;
+    const expiryDate = item.datePeremption
+      ?? (item.dureeConservationJours
+        ? new Date(Date.now() + item.dureeConservationJours * 86_400_000)
+            .toISOString()
+            .split('T')[0]
+        : null);
 
     const { error: stockError } = await supabase.from('stock_items').insert({
       foyer_id: foyerId,

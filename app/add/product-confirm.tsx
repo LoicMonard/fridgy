@@ -4,6 +4,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -39,8 +41,28 @@ export default function ProductConfirmScreen() {
   const [quantite, setQuantite] = useState('1');
   const [unite, setUnite] = useState<Unite>('pièce');
   const [lieu, setLieu] = useState<Lieu>('frigo');
-  const [datePeremption, setDatePeremption] = useState('');
+  const [datePeremption, setDatePeremption] = useState<Date | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerDate, setPickerDate] = useState(new Date());
   const [saving, setSaving] = useState(false);
+
+  function formatDate(date: Date) {
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function handlePickerChange(_: DateTimePickerEvent, date?: Date) {
+    if (Platform.OS === 'android') {
+      setPickerVisible(false);
+      if (date) setDatePeremption(date);
+    } else {
+      if (date) setPickerDate(date);
+    }
+  }
+
+  function confirmIOSDate() {
+    setDatePeremption(pickerDate);
+    setPickerVisible(false);
+  }
 
   async function handleSave() {
     if (!nom.trim()) {
@@ -54,18 +76,7 @@ export default function ProductConfirmScreen() {
       return;
     }
 
-    // Validate date if provided (YYYY-MM-DD)
-    let isoDate: string | null = null;
-    if (datePeremption.trim()) {
-      const parts = datePeremption.trim().split('/');
-      if (parts.length === 3) {
-        const [day, month, year] = parts;
-        isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      } else {
-        Alert.alert(t('productConfirm.errorDateFormat'));
-        return;
-      }
-    }
+    const isoDate = datePeremption?.toISOString().split('T')[0] ?? null;
 
     setSaving(true);
     try {
@@ -193,15 +204,64 @@ export default function ProductConfirmScreen() {
           {/* Date de péremption */}
           <View style={styles.field}>
             <Text style={styles.label}>{t('productConfirm.datePeremption')}</Text>
-            <TextInput
-              style={styles.input}
-              value={datePeremption}
-              onChangeText={setDatePeremption}
-              placeholder="JJ/MM/AAAA"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="numeric"
-            />
+            <View style={styles.dateRow}>
+              <TouchableOpacity
+                style={[styles.dateBadge, datePeremption ? styles.dateBadgeSet : styles.dateBadgeEmpty]}
+                onPress={() => setPickerVisible(true)}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={datePeremption ? '#FF8400' : '#9CA3AF'}
+                />
+                <Text style={[styles.dateBadgeText, datePeremption ? styles.dateBadgeTextSet : styles.dateBadgeTextEmpty]}>
+                  {datePeremption ? formatDate(datePeremption) : t('productConfirm.pickDate')}
+                </Text>
+              </TouchableOpacity>
+              {datePeremption && (
+                <TouchableOpacity onPress={() => setDatePeremption(null)} style={styles.dateClear}>
+                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
+
+          {/* Android date picker */}
+          {pickerVisible && Platform.OS === 'android' && (
+            <DateTimePicker
+              value={pickerDate}
+              mode="date"
+              display="default"
+              minimumDate={new Date()}
+              onChange={handlePickerChange}
+            />
+          )}
+
+          {/* iOS bottom sheet picker */}
+          {Platform.OS === 'ios' && (
+            <Modal visible={pickerVisible} transparent animationType="slide">
+              <View style={styles.pickerOverlay}>
+                <View style={styles.pickerSheet}>
+                  <View style={styles.pickerHeader}>
+                    <TouchableOpacity onPress={() => setPickerVisible(false)}>
+                      <Text style={styles.pickerCancel}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={confirmIOSDate}>
+                      <Text style={styles.pickerConfirm}>{t('common.confirm')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={pickerDate}
+                    mode="date"
+                    display="spinner"
+                    minimumDate={new Date()}
+                    onChange={handlePickerChange}
+                    locale="fr-FR"
+                  />
+                </View>
+              </View>
+            </Modal>
+          )}
 
           {/* Lieu */}
           <View style={styles.field}>
@@ -328,4 +388,37 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+
+  // Date picker
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateBadge: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+  },
+  dateBadgeEmpty: { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB' },
+  dateBadgeSet: { backgroundColor: '#FFF3E0', borderColor: '#FF8400', borderStyle: 'solid' },
+  dateBadgeText: { fontSize: 15 },
+  dateBadgeTextEmpty: { color: '#9CA3AF' },
+  dateBadgeTextSet: { color: '#FF8400', fontWeight: '600' },
+  dateClear: { padding: 4 },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },
+  pickerSheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 34 },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pickerCancel: { fontSize: 16, color: '#6B7280' },
+  pickerConfirm: { fontSize: 16, fontWeight: '600', color: '#FF8400' },
 });
