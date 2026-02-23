@@ -38,6 +38,7 @@ export interface ReceiptItemDraft {
   quantite: number;
   unite: string;
   dureeConservationJours?: number;
+  datePeremption?: string | null; // ISO YYYY-MM-DD, prioritaire sur dureeConservationJours
   lieu: Lieu;
 }
 

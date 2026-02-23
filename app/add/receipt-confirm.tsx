@@ -27,6 +27,22 @@ const LIEUX: { value: Lieu; icon: string }[] = [
 
 const UNITS = ['unite', 'g', 'kg', 'L', 'mL', 'lot'];
 
+function dureeToDateStr(jours: number | undefined): string {
+  if (!jours) return '';
+  const d = new Date(Date.now() + jours * 86_400_000);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}/${d.getFullYear()}`;
+}
+
+function dateStrToISO(str: string): string | null {
+  const parts = str.trim().split('/');
+  if (parts.length !== 3) return null;
+  const [day, month, year] = parts;
+  if (year.length !== 4) return null;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
 interface EditableItem {
   id: string;
   nom: string;
@@ -34,6 +50,7 @@ interface EditableItem {
   quantiteStr: string;
   unite: string;
   lieu: Lieu;
+  datePeremption: string; // JJ/MM/AAAA, vide si inconnu
   checked: boolean;
   ingredientTag?: string;
   dureeConservationJours?: number;
@@ -52,6 +69,7 @@ export default function ReceiptConfirmScreen() {
       quantiteStr: String(item.quantiteEstimee ?? 1),
       unite: item.unite ?? 'unite',
       lieu: 'frigo',
+      datePeremption: dureeToDateStr(item.dureeConservationJours),
       checked: true,
       ingredientTag: item.ingredientTag,
       dureeConservationJours: item.dureeConservationJours,
@@ -99,6 +117,12 @@ export default function ReceiptConfirmScreen() {
   function updateUnite(id: string, unite: string) {
     setEditableItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, unite } : item)),
+    );
+  }
+
+  function updateDate(id: string, datePeremption: string) {
+    setEditableItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, datePeremption } : item)),
     );
   }
 
@@ -152,6 +176,7 @@ export default function ReceiptConfirmScreen() {
           quantite: item.quantite,
           unite: item.unite,
           dureeConservationJours: item.dureeConservationJours,
+          datePeremption: dateStrToISO(item.datePeremption),
           lieu: item.lieu,
         }));
 
@@ -225,6 +250,7 @@ export default function ReceiptConfirmScreen() {
                   {/* Row 2: qty input + unit picker + lieu (checked only) */}
                   {item.checked && (
                     <View style={styles.row2}>
+
                       {/* Quantity — direct text input, tap to type new value */}
                       <TextInput
                         style={styles.qtyInput}
@@ -262,6 +288,21 @@ export default function ReceiptConfirmScreen() {
                           />
                         </TouchableOpacity>
                       ))}
+                    </View>
+                  )}
+
+                  {/* Row 3: date de péremption (checked only) */}
+                  {item.checked && (
+                    <View style={styles.row3}>
+                      <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />
+                      <TextInput
+                        style={styles.dateInput}
+                        value={item.datePeremption}
+                        onChangeText={(text) => updateDate(item.id, text)}
+                        placeholder={t('receiptConfirm.datePlaceholder')}
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                      />
                     </View>
                   )}
                 </View>
@@ -336,6 +377,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   rowSpacer: { flex: 1 },
+
+  row3: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 36,
+    gap: 6,
+  },
+  dateInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#111111',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: '#F9FAFB',
+  },
 
   checkbox: { padding: 2 },
 
