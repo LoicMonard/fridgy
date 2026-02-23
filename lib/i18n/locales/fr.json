@@ -22,8 +22,11 @@
   },
   "home": {
     "title": "Accueil",
-    "welcome": "Bienvenue sur Fridgy",
-    "emptyState": "Commencez par ajouter des produits à votre stock"
+    "expiringSoon": "Expire bientôt",
+    "nothingExpiring": "Aucun produit n'expire dans les 3 prochains jours",
+    "cookingCta": "Qu'est-ce que je cuisine ?",
+    "cookingCtaSub": "Recettes basées sur votre stock",
+    "recentlyAdded": "Derniers ajouts"
   },
   "stock": {
     "title": "Mon stock",
