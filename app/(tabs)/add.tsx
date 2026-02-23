@@ -56,7 +56,7 @@ export default function AddScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
+        <TouchableOpacity style={styles.option} onPress={() => router.push('/add/manual-product')}>
           <View style={[styles.iconBox, { backgroundColor: '#E8F5E9' }]}>
             <Ionicons name="pencil-outline" size={26} color="#2E7D32" />
           </View>
