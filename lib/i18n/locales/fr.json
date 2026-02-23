@@ -29,7 +29,13 @@
     "title": "Mon stock",
     "emptyState": "Votre stock est vide",
     "addProduct": "Ajouter un produit",
-    "expiringProducts": "Produits bientôt périmés"
+    "expiringProducts": "Produits bientôt périmés",
+    "frigo": "Frigo",
+    "placard": "Placard",
+    "congelateur": "Congélateur",
+    "deleteConfirmTitle": "Supprimer ce produit ?",
+    "noItemsInLieu": "Aucun produit ici",
+    "noItemsInLieuSub": "Ajoutez des produits en scannant un code-barres ou un ticket de caisse."
   },
   "add": {
     "title": "Ajouter",
@@ -59,9 +65,9 @@
     "placard": "Placard",
     "congelateur": "Congélateur",
     "addToStock": "Ajouter au stock",
+    "pickDate": "Ajouter une DLC",
     "errorNomRequired": "Le nom du produit est obligatoire.",
     "errorQuantite": "La quantité doit être un nombre positif.",
-    "errorDateFormat": "Format de date invalide. Utilisez JJ/MM/AAAA.",
     "errorNotLoggedIn": "Vous devez être connecté pour ajouter un produit.",
     "errorNoFoyer": "Aucun foyer associé à votre compte."
   },

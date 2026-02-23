@@ -2,6 +2,7 @@ import '../lib/i18n';
 
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -48,13 +49,13 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="add" />
       </Stack>
-    </>
+    </GestureHandlerRootView>
   );
 }
