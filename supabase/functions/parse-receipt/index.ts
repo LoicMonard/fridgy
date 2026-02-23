@@ -44,8 +44,6 @@ Deno.serve(async (req) => {
     });
   }
 
-  const t0 = Date.now();
-
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -61,10 +59,7 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace('Bearer ', '');
-    const tAuth0 = Date.now();
     const { error: authError } = await supabase.auth.getUser(token);
-    console.log(`[parse-receipt] auth: ${Date.now() - tAuth0}ms`);
-
     if (authError) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
@@ -82,12 +77,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`[parse-receipt] image size: ${Math.round(imageBase64.length / 1024)}KB (base64)`);
-
     const geminiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
-    const tLlm0 = Date.now();
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -105,7 +97,6 @@ Deno.serve(async (req) => {
         },
       }),
     });
-    console.log(`[parse-receipt] gemini: ${Date.now() - tLlm0}ms`);
 
     if (!geminiRes.ok) {
       const err = await geminiRes.text();
@@ -123,8 +114,8 @@ Deno.serve(async (req) => {
     try {
       parsed = JSON.parse(rawText);
     } catch {
-      console.error('[parse-receipt] Failed to parse Gemini JSON:', rawText);
-      return new Response(JSON.stringify({ error: 'PARSE_ERROR', raw: rawText }), {
+      console.error('[parse-receipt] Failed to parse JSON:', rawText);
+      return new Response(JSON.stringify({ error: 'PARSE_ERROR' }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -133,8 +124,6 @@ Deno.serve(async (req) => {
     const items: ParsedItem[] = Array.isArray(parsed)
       ? parsed as ParsedItem[]
       : (parsed as { items?: ParsedItem[] }).items ?? [];
-
-    console.log(`[parse-receipt] total: ${Date.now() - t0}ms — ${items.length} items`);
 
     return new Response(JSON.stringify({ items }), {
       status: 200,
