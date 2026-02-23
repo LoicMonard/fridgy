@@ -97,6 +97,13 @@
     "orEmail": "ou avec votre email",
     "continueWithGoogle": "Continuer avec Google"
   },
+  "manualProduct": {
+    "title": "Ajout manuel",
+    "categorie": "Catégorie",
+    "categoriePlaceholder": "Sélectionner une catégorie (optionnel)",
+    "clearCategorie": "Retirer la catégorie",
+    "noResults": "Aucune catégorie trouvée"
+  },
   "receiptScan": {
     "title": "Scanner un ticket",
     "hint": "Cadrez le ticket de caisse en entier",

@@ -7,6 +7,7 @@ export default function AddLayout() {
       <Stack.Screen name="product-confirm" />
       <Stack.Screen name="scan-receipt" />
       <Stack.Screen name="receipt-confirm" />
+      <Stack.Screen name="manual-product" />
     </Stack>
   );
 }
