@@ -50,7 +50,7 @@ export default function ScanReceiptScreen() {
     try {
       // quality: 0.2 keeps JPEG ~100-300 KB (well under Supabase 2 MB limit)
       // receipts are black text on white — readable at low compression
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.2, base64: true });
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.1, base64: true });
       if (photo?.base64) {
         await processPhoto(photo.base64, 'image/jpeg');
       }
