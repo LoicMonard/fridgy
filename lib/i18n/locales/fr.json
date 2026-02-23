@@ -134,10 +134,12 @@
   },
   "recipes": {
     "title": "Recettes",
-    "emptyState": "Aucune recette trouvée",
-    "search": "Rechercher une recette",
-    "ingredients": "Ingrédients",
-    "steps": "Étapes"
+    "suggestions": "Suggestions",
+    "favorites": "Favoris",
+    "emptySuggestionsTitle": "Aucune suggestion",
+    "emptySuggestionsSub": "Ajoutez des produits à votre stock pour voir des recettes adaptées.",
+    "emptyFavoritesTitle": "Pas encore de favoris",
+    "emptyFavoritesSub": "Marquez des recettes comme favorites depuis leur page détail."
   },
   "settings": {
     "title": "Réglages",
