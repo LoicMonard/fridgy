@@ -1,7 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.2-11b-vision-preview';
+const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 interface ParsedItem {
   nom: string;
