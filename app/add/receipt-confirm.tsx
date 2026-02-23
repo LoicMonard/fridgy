@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { addReceiptItemsToStock } from '@/features/stock/services/stockService';
@@ -27,20 +29,13 @@ const LIEUX: { value: Lieu; icon: string }[] = [
 
 const UNITS = ['unite', 'g', 'kg', 'L', 'mL', 'lot'];
 
-function dureeToDateStr(jours: number | undefined): string {
-  if (!jours) return '';
-  const d = new Date(Date.now() + jours * 86_400_000);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  return `${day}/${month}/${d.getFullYear()}`;
+function computeDefaultDate(jours: number | undefined): Date | null {
+  if (!jours) return null;
+  return new Date(Date.now() + jours * 86_400_000);
 }
 
-function dateStrToISO(str: string): string | null {
-  const parts = str.trim().split('/');
-  if (parts.length !== 3) return null;
-  const [day, month, year] = parts;
-  if (year.length !== 4) return null;
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 interface EditableItem {
@@ -50,7 +45,7 @@ interface EditableItem {
   quantiteStr: string;
   unite: string;
   lieu: Lieu;
-  datePeremption: string; // JJ/MM/AAAA, vide si inconnu
+  datePeremption: Date | null;
   checked: boolean;
   ingredientTag?: string;
   dureeConservationJours?: number;
@@ -69,13 +64,18 @@ export default function ReceiptConfirmScreen() {
       quantiteStr: String(item.quantiteEstimee ?? 1),
       unite: item.unite ?? 'unite',
       lieu: 'frigo',
-      datePeremption: dureeToDateStr(item.dureeConservationJours),
+      datePeremption: computeDefaultDate(item.dureeConservationJours),
       checked: true,
       ingredientTag: item.ingredientTag,
       dureeConservationJours: item.dureeConservationJours,
     })),
   );
   const [saving, setSaving] = useState(false);
+
+  // Date picker state
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerItemId, setPickerItemId] = useState<string | null>(null);
+  const [pickerDate, setPickerDate] = useState(new Date());
 
   const checkedItems = editableItems.filter((item) => item.checked);
 
@@ -120,16 +120,50 @@ export default function ReceiptConfirmScreen() {
     );
   }
 
-  function updateDate(id: string, datePeremption: string) {
-    setEditableItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, datePeremption } : item)),
-    );
-  }
-
   function updateLieu(id: string, lieu: Lieu) {
     setEditableItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, lieu } : item)),
     );
+  }
+
+  function clearDate(id: string) {
+    setEditableItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, datePeremption: null } : item)),
+    );
+  }
+
+  function openDatePicker(id: string, current: Date | null) {
+    setPickerItemId(id);
+    setPickerDate(current ?? new Date());
+    setPickerVisible(true);
+  }
+
+  function handlePickerChange(_: DateTimePickerEvent, date?: Date) {
+    if (Platform.OS === 'android') {
+      setPickerVisible(false);
+      if (date && pickerItemId) {
+        setEditableItems((prev) =>
+          prev.map((item) =>
+            item.id === pickerItemId ? { ...item, datePeremption: date } : item,
+          ),
+        );
+      }
+      setPickerItemId(null);
+    } else {
+      if (date) setPickerDate(date);
+    }
+  }
+
+  function confirmIOSDate() {
+    if (pickerItemId) {
+      setEditableItems((prev) =>
+        prev.map((item) =>
+          item.id === pickerItemId ? { ...item, datePeremption: pickerDate } : item,
+        ),
+      );
+    }
+    setPickerVisible(false);
+    setPickerItemId(null);
   }
 
   function pickUnit(id: string, currentUnite: string) {
@@ -176,7 +210,7 @@ export default function ReceiptConfirmScreen() {
           quantite: item.quantite,
           unite: item.unite,
           dureeConservationJours: item.dureeConservationJours,
-          datePeremption: dateStrToISO(item.datePeremption),
+          datePeremption: item.datePeremption?.toISOString().split('T')[0] ?? null,
           lieu: item.lieu,
         }));
 
@@ -247,11 +281,9 @@ export default function ReceiptConfirmScreen() {
                     />
                   </View>
 
-                  {/* Row 2: qty input + unit picker + lieu (checked only) */}
+                  {/* Row 2: qty + unit + lieu (checked only) */}
                   {item.checked && (
                     <View style={styles.row2}>
-
-                      {/* Quantity — direct text input, tap to type new value */}
                       <TextInput
                         style={styles.qtyInput}
                         value={item.quantiteStr}
@@ -260,8 +292,6 @@ export default function ReceiptConfirmScreen() {
                         keyboardType="numeric"
                         selectTextOnFocus
                       />
-
-                      {/* Unit picker */}
                       <TouchableOpacity
                         style={styles.unitBtn}
                         onPress={() => pickUnit(item.id, item.unite)}
@@ -273,7 +303,6 @@ export default function ReceiptConfirmScreen() {
 
                       <View style={styles.rowSpacer} />
 
-                      {/* Per-item lieu */}
                       {LIEUX.map((l) => (
                         <TouchableOpacity
                           key={l.value}
@@ -291,18 +320,41 @@ export default function ReceiptConfirmScreen() {
                     </View>
                   )}
 
-                  {/* Row 3: date de péremption (checked only) */}
+                  {/* Row 3: expiry date (checked only) */}
                   {item.checked && (
                     <View style={styles.row3}>
-                      <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />
-                      <TextInput
-                        style={styles.dateInput}
-                        value={item.datePeremption}
-                        onChangeText={(text) => updateDate(item.id, text)}
-                        placeholder={t('receiptConfirm.datePlaceholder')}
-                        placeholderTextColor="#9CA3AF"
-                        keyboardType="numeric"
-                      />
+                      <TouchableOpacity
+                        style={[
+                          styles.dateBadge,
+                          item.datePeremption ? styles.dateBadgeFilled : styles.dateBadgeEmpty,
+                        ]}
+                        onPress={() => openDatePicker(item.id, item.datePeremption)}
+                      >
+                        <Ionicons
+                          name="calendar-outline"
+                          size={13}
+                          color={item.datePeremption ? '#FF8400' : '#9CA3AF'}
+                        />
+                        <Text
+                          style={[
+                            styles.dateBadgeText,
+                            item.datePeremption && styles.dateBadgeTextFilled,
+                          ]}
+                        >
+                          {item.datePeremption
+                            ? formatDate(item.datePeremption)
+                            : t('receiptConfirm.addDate')}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {item.datePeremption && (
+                        <TouchableOpacity
+                          onPress={() => clearDate(item.id)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close-circle" size={16} color="#D1D5DB" />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   )}
                 </View>
@@ -311,7 +363,7 @@ export default function ReceiptConfirmScreen() {
           )}
         </ScrollView>
 
-        {/* Sticky footer: CTA only */}
+        {/* Sticky footer: CTA */}
         <SafeAreaView edges={['bottom']} style={styles.footer}>
           <TouchableOpacity
             style={[styles.saveBtn, (saving || checkedItems.length === 0) && styles.saveBtnDisabled]}
@@ -328,6 +380,50 @@ export default function ReceiptConfirmScreen() {
           </TouchableOpacity>
         </SafeAreaView>
       </KeyboardAvoidingView>
+
+      {/* Android: picker renders directly (dialog auto-dismisses) */}
+      {pickerVisible && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={pickerDate}
+          mode="date"
+          display="default"
+          onChange={handlePickerChange}
+        />
+      )}
+
+      {/* iOS: picker in a bottom sheet */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={pickerVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setPickerVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setPickerVisible(false)}
+          />
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity onPress={() => setPickerVisible(false)}>
+                <Text style={styles.pickerCancel}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <Text style={styles.pickerTitle}>{t('receiptConfirm.addDate')}</Text>
+              <TouchableOpacity onPress={confirmIOSDate}>
+                <Text style={styles.pickerConfirm}>{t('common.confirm')}</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={pickerDate}
+              mode="date"
+              display="spinner"
+              onChange={handlePickerChange}
+              locale="fr-FR"
+            />
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -373,28 +469,16 @@ const styles = StyleSheet.create({
   row2: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 36, // aligns with name field (checkbox 26px + gap 10px)
+    paddingLeft: 36,
     gap: 6,
   },
-  rowSpacer: { flex: 1 },
-
   row3: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 36,
     gap: 6,
   },
-  dateInput: {
-    flex: 1,
-    fontSize: 13,
-    color: '#111111',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#F9FAFB',
-  },
+  rowSpacer: { flex: 1 },
 
   checkbox: { padding: 2 },
 
@@ -446,6 +530,29 @@ const styles = StyleSheet.create({
   },
   lieuBtnActive: { backgroundColor: '#FFF3E0', borderColor: '#FF8400' },
 
+  dateBadge: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  dateBadgeEmpty: {
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+  },
+  dateBadgeFilled: {
+    borderColor: '#FF8400',
+    borderStyle: 'solid',
+    backgroundColor: '#FFF3E0',
+  },
+  dateBadgeText: { fontSize: 12, color: '#9CA3AF' },
+  dateBadgeTextFilled: { color: '#FF8400', fontWeight: '500' },
+
   footer: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
@@ -467,4 +574,28 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.45 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+
+  // Date picker modal (iOS)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 32,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pickerTitle: { fontSize: 15, fontWeight: '600', color: '#111111' },
+  pickerCancel: { fontSize: 15, color: '#6B7280' },
+  pickerConfirm: { fontSize: 15, color: '#FF8400', fontWeight: '600' },
 });

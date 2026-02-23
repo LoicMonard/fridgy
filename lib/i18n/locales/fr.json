@@ -110,7 +110,7 @@
     "itemCount": "{{count}} produit détecté",
     "itemCount_plural": "{{count}} produits détectés",
     "pickUnit": "Unité de mesure",
-    "datePlaceholder": "DLC (optionnel)",
+    "addDate": "Ajouter une DLC",
     "addAll": "Ajouter {{count}} produit au stock",
     "addAll_plural": "Ajouter {{count}} produits au stock",
     "empty": "Aucun produit. Revenez en arrière et réessayez.",
