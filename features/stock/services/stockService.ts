@@ -54,6 +54,40 @@ export async function addToStock(
   if (error) throw error;
 }
 
+export async function cookRecipe(
+  recipeIngredients: { ingredient_tag: string; quantite_totale: number; unite: string }[],
+  foyerId: string,
+): Promise<void> {
+  for (const ri of recipeIngredients) {
+    const { data: stockItems } = await supabase
+      .from('stock_items')
+      .select('id, quantite, unite')
+      .eq('foyer_id', foyerId)
+      .eq('ingredient_tag', ri.ingredient_tag)
+      .order('date_peremption', { ascending: true, nullsFirst: false });
+
+    if (!stockItems || stockItems.length === 0) continue;
+
+    let remaining = ri.quantite_totale;
+    for (const item of stockItems) {
+      if (remaining <= 0) break;
+      const qty = Number(item.quantite);
+      const sameUnit = (item.unite as string) === ri.unite;
+
+      if (sameUnit && qty > remaining) {
+        await supabase
+          .from('stock_items')
+          .update({ quantite: qty - remaining })
+          .eq('id', item.id as string);
+        remaining = 0;
+      } else {
+        await supabase.from('stock_items').delete().eq('id', item.id as string);
+        remaining = sameUnit ? remaining - qty : 0;
+      }
+    }
+  }
+}
+
 export async function addReceiptItemsToStock(
   items: ReceiptItemDraft[],
   foyerId: string,
