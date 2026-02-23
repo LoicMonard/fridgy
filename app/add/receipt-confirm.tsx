@@ -19,17 +19,21 @@ import { supabase } from '@/lib/supabase';
 import { addReceiptItemsToStock } from '@/features/stock/services/stockService';
 import type { Lieu, ReceiptItemDraft, ReceiptProduct } from '@/features/scanning/types';
 
-const LIEUX: { value: Lieu; label: string; icon: string }[] = [
-  { value: 'frigo', label: 'productConfirm.frigo', icon: 'snow-outline' },
-  { value: 'placard', label: 'productConfirm.placard', icon: 'cube-outline' },
-  { value: 'congelateur', label: 'productConfirm.congelateur', icon: 'thermometer-outline' },
+const LIEUX: { value: Lieu; icon: string }[] = [
+  { value: 'frigo', icon: 'snow-outline' },
+  { value: 'placard', icon: 'cube-outline' },
+  { value: 'congelateur', icon: 'thermometer-outline' },
 ];
+
+const UNITS = ['unite', 'g', 'kg', 'L', 'mL', 'lot'];
 
 interface EditableItem {
   id: string;
   nom: string;
   quantite: number;
+  quantiteStr: string;
   unite: string;
+  lieu: Lieu;
   checked: boolean;
   ingredientTag?: string;
   dureeConservationJours?: number;
@@ -45,13 +49,14 @@ export default function ReceiptConfirmScreen() {
       id: String(i),
       nom: item.nom,
       quantite: item.quantiteEstimee ?? 1,
+      quantiteStr: String(item.quantiteEstimee ?? 1),
       unite: item.unite ?? 'unite',
+      lieu: 'frigo',
       checked: true,
       ingredientTag: item.ingredientTag,
       dureeConservationJours: item.dureeConservationJours,
     })),
   );
-  const [lieu, setLieu] = useState<Lieu>('frigo');
   const [saving, setSaving] = useState(false);
 
   const checkedItems = editableItems.filter((item) => item.checked);
@@ -68,11 +73,52 @@ export default function ReceiptConfirmScreen() {
     );
   }
 
-  function updateQty(id: string, delta: number) {
+  function updateQtyStr(id: string, text: string) {
+    const parsed = parseFloat(text);
     setEditableItems((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, quantite: Math.max(1, item.quantite + delta) } : item,
+        item.id === id
+          ? {
+              ...item,
+              quantiteStr: text,
+              ...(!isNaN(parsed) && parsed > 0 ? { quantite: parsed } : {}),
+            }
+          : item,
       ),
+    );
+  }
+
+  function normalizeQty(id: string) {
+    setEditableItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, quantiteStr: String(item.quantite) } : item,
+      ),
+    );
+  }
+
+  function updateUnite(id: string, unite: string) {
+    setEditableItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, unite } : item)),
+    );
+  }
+
+  function updateLieu(id: string, lieu: Lieu) {
+    setEditableItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, lieu } : item)),
+    );
+  }
+
+  function pickUnit(id: string, currentUnite: string) {
+    Alert.alert(
+      t('receiptConfirm.pickUnit'),
+      undefined,
+      [
+        ...UNITS.map((u) => ({
+          text: u === currentUnite ? `${u} ✓` : u,
+          onPress: () => updateUnite(id, u),
+        })),
+        { text: t('common.cancel'), style: 'cancel' as const },
+      ],
     );
   }
 
@@ -106,7 +152,7 @@ export default function ReceiptConfirmScreen() {
           quantite: item.quantite,
           unite: item.unite,
           dureeConservationJours: item.dureeConservationJours,
-          lieu,
+          lieu: item.lieu,
         }));
 
       await addReceiptItemsToStock(drafts, membre.foyer_id as string, session.user.id);
@@ -154,48 +200,68 @@ export default function ReceiptConfirmScreen() {
             <View style={styles.itemsList}>
               {editableItems.map((item) => (
                 <View key={item.id} style={[styles.itemCard, !item.checked && styles.itemCardUnchecked]}>
-                  <TouchableOpacity
-                    onPress={() => toggleItem(item.id)}
-                    style={styles.checkbox}
-                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                  >
-                    <Ionicons
-                      name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={26}
-                      color={item.checked ? '#FF8400' : '#D1D5DB'}
+                  {/* Row 1: checkbox + name */}
+                  <View style={styles.row1}>
+                    <TouchableOpacity
+                      onPress={() => toggleItem(item.id)}
+                      style={styles.checkbox}
+                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    >
+                      <Ionicons
+                        name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={26}
+                        color={item.checked ? '#FF8400' : '#D1D5DB'}
+                      />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={[styles.itemName, !item.checked && styles.itemNameUnchecked]}
+                      value={item.nom}
+                      onChangeText={(text) => updateName(item.id, text)}
+                      editable={item.checked}
+                      placeholderTextColor="#9CA3AF"
                     />
-                  </TouchableOpacity>
+                  </View>
 
-                  <TextInput
-                    style={[styles.itemName, !item.checked && styles.itemNameUnchecked]}
-                    value={item.nom}
-                    onChangeText={(text) => updateName(item.id, text)}
-                    editable={item.checked}
-                    placeholderTextColor="#9CA3AF"
-                  />
-
+                  {/* Row 2: qty input + unit picker + lieu (checked only) */}
                   {item.checked && (
-                    <View style={styles.stepper}>
+                    <View style={styles.row2}>
+                      {/* Quantity — direct text input, tap to type new value */}
+                      <TextInput
+                        style={styles.qtyInput}
+                        value={item.quantiteStr}
+                        onChangeText={(text) => updateQtyStr(item.id, text)}
+                        onBlur={() => normalizeQty(item.id)}
+                        keyboardType="numeric"
+                        selectTextOnFocus
+                      />
+
+                      {/* Unit picker */}
                       <TouchableOpacity
-                        onPress={() => updateQty(item.id, -1)}
-                        style={styles.stepperBtn}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
+                        style={styles.unitBtn}
+                        onPress={() => pickUnit(item.id, item.unite)}
+                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                       >
-                        <Ionicons name="remove" size={16} color="#6B7280" />
+                        <Text style={styles.unitBtnText}>{item.unite}</Text>
+                        <Ionicons name="chevron-down" size={10} color="#9CA3AF" />
                       </TouchableOpacity>
-                      <Text style={styles.stepperValue}>
-                        {item.quantite}
-                        {item.unite !== 'unite' && (
-                          <Text style={styles.stepperUnit}> {item.unite}</Text>
-                        )}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => updateQty(item.id, 1)}
-                        style={styles.stepperBtn}
-                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-                      >
-                        <Ionicons name="add" size={16} color="#6B7280" />
-                      </TouchableOpacity>
+
+                      <View style={styles.rowSpacer} />
+
+                      {/* Per-item lieu */}
+                      {LIEUX.map((l) => (
+                        <TouchableOpacity
+                          key={l.value}
+                          style={[styles.lieuBtn, item.lieu === l.value && styles.lieuBtnActive]}
+                          onPress={() => updateLieu(item.id, l.value)}
+                          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                        >
+                          <Ionicons
+                            name={l.icon as never}
+                            size={15}
+                            color={item.lieu === l.value ? '#FF8400' : '#9CA3AF'}
+                          />
+                        </TouchableOpacity>
+                      ))}
                     </View>
                   )}
                 </View>
@@ -204,30 +270,8 @@ export default function ReceiptConfirmScreen() {
           )}
         </ScrollView>
 
-        {/* Sticky footer: lieu + CTA */}
+        {/* Sticky footer: CTA only */}
         <SafeAreaView edges={['bottom']} style={styles.footer}>
-          <View style={styles.lieuRow}>
-            <Text style={styles.lieuLabel}>{t('receiptConfirm.lieu')}</Text>
-            <View style={styles.lieuBtns}>
-              {LIEUX.map((l) => (
-                <TouchableOpacity
-                  key={l.value}
-                  style={[styles.lieuBtn, lieu === l.value && styles.lieuBtnActive]}
-                  onPress={() => setLieu(l.value)}
-                >
-                  <Ionicons
-                    name={l.icon as never}
-                    size={15}
-                    color={lieu === l.value ? '#FF8400' : '#9CA3AF'}
-                  />
-                  <Text style={[styles.lieuBtnText, lieu === l.value && styles.lieuBtnTextActive]}>
-                    {t(l.label)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
           <TouchableOpacity
             style={[styles.saveBtn, (saving || checkedItems.length === 0) && styles.saveBtnDisabled]}
             onPress={handleSaveAll}
@@ -276,16 +320,22 @@ const styles = StyleSheet.create({
 
   itemsList: { gap: 8 },
   itemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    gap: 10,
-    minHeight: 56,
+    gap: 6,
   },
   itemCardUnchecked: { backgroundColor: '#F9FAFB', opacity: 0.55 },
+
+  row1: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  row2: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 36, // aligns with name field (checkbox 26px + gap 10px)
+    gap: 6,
+  },
+  rowSpacer: { flex: 1 },
 
   checkbox: { padding: 2 },
 
@@ -298,38 +348,50 @@ const styles = StyleSheet.create({
   },
   itemNameUnchecked: { color: '#9CA3AF', textDecorationLine: 'line-through' },
 
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 10,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    gap: 6,
-  },
-  stepperBtn: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-  },
-  stepperValue: {
+  qtyInput: {
+    width: 58,
+    textAlign: 'center',
     fontSize: 14,
     fontWeight: '600',
     color: '#111111',
-    minWidth: 28,
-    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    backgroundColor: '#F9FAFB',
   },
-  stepperUnit: { fontSize: 12, fontWeight: '400', color: '#6B7280' },
+
+  unitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: '#F9FAFB',
+  },
+  unitBtnText: { fontSize: 12, fontWeight: '500', color: '#6B7280' },
+
+  lieuBtn: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  lieuBtnActive: { backgroundColor: '#FFF3E0', borderColor: '#FF8400' },
 
   footer: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 8,
-    gap: 12,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
     shadowColor: '#000',
@@ -338,25 +400,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  lieuRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  lieuLabel: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  lieuBtns: { flex: 1, flexDirection: 'row', gap: 8 },
-  lieuBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-  },
-  lieuBtnActive: { backgroundColor: '#FFF3E0', borderColor: '#FF8400' },
-  lieuBtnText: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
-  lieuBtnTextActive: { color: '#FF8400', fontWeight: '600' },
-
   saveBtn: {
     backgroundColor: '#FF8400',
     borderRadius: 14,
