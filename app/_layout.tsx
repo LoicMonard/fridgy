@@ -55,6 +55,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="add" />
+        <Stack.Screen name="recipes" />
       </Stack>
     </GestureHandlerRootView>
   );

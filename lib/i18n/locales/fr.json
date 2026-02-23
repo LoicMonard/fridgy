@@ -141,6 +141,16 @@
     "emptyFavoritesTitle": "Pas encore de favoris",
     "emptyFavoritesSub": "Marquez des recettes comme favorites depuis leur page détail."
   },
+  "recipeDetail": {
+    "ingredients": "Ingrédients",
+    "instructions": "Étapes",
+    "cookCta": "J'ai cuisiné ça",
+    "cookConfirmTitle": "Déduire du stock ?",
+    "cookConfirmBody": "Les ingrédients suivants seront retirés de votre stock :",
+    "cookConfirm": "Confirmer",
+    "cookNoIngredients": "Aucun ingrédient disponible dans votre stock.",
+    "cookSuccess": "Stock mis à jour !"
+  },
   "settings": {
     "title": "Réglages",
     "language": "Langue",
