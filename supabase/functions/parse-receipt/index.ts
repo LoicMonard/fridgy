@@ -1,7 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.2-11b-vision-preview';
 
 interface ParsedItem {
   nom: string;
@@ -11,10 +11,10 @@ interface ParsedItem {
   duree_conservation_jours: number | null;
 }
 
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{ text?: string }>;
+interface GroqResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
     };
   }>;
 }
@@ -84,53 +84,66 @@ Deno.serve(async (req) => {
 
     console.log(`[parse-receipt] image size: ${Math.round(imageBase64.length / 1024)}KB (base64)`);
 
-    const geminiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
+    const groqKey = Deno.env.get('GROQ_API_KEY');
+    if (!groqKey) throw new Error('GROQ_API_KEY not configured');
 
-    const tGemini0 = Date.now();
-    const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiKey}`, {
+    const tLlm0 = Date.now();
+    const groqRes = await fetch(GROQ_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey}`,
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: mimeType, data: imageBase64 } },
-            { text: PROMPT },
-          ],
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          responseMimeType: 'application/json',
-          thinkingConfig: {
-            thinkingBudget: 0,
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+              },
+              {
+                type: 'text',
+                text: PROMPT,
+              },
+            ],
           },
-        },
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
       }),
     });
-    console.log(`[parse-receipt] gemini: ${Date.now() - tGemini0}ms`);
+    console.log(`[parse-receipt] groq: ${Date.now() - tLlm0}ms`);
 
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text();
-      console.error('[parse-receipt] Gemini error:', err);
+    if (!groqRes.ok) {
+      const err = await groqRes.text();
+      console.error('[parse-receipt] Groq error:', err);
       return new Response(JSON.stringify({ error: 'LLM_ERROR' }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const geminiData = await geminiRes.json() as GeminiResponse;
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]';
+    const groqData = await groqRes.json() as GroqResponse;
+    const rawText = groqData.choices?.[0]?.message?.content ?? '[]';
 
-    let items: ParsedItem[] = [];
+    let parsed: unknown;
     try {
-      items = JSON.parse(rawText) as ParsedItem[];
+      parsed = JSON.parse(rawText);
     } catch {
-      console.error('[parse-receipt] Failed to parse Gemini JSON:', rawText);
+      console.error('[parse-receipt] Failed to parse Groq JSON:', rawText);
       return new Response(JSON.stringify({ error: 'PARSE_ERROR', raw: rawText }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    // Groq with json_object may return { items: [...] } or directly [...]
+    const items: ParsedItem[] = Array.isArray(parsed)
+      ? parsed as ParsedItem[]
+      : (parsed as { items?: ParsedItem[] }).items ?? [];
 
     console.log(`[parse-receipt] total: ${Date.now() - t0}ms — ${items.length} items`);
 
