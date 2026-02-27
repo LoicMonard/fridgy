@@ -139,7 +139,14 @@
     "emptySuggestionsTitle": "Aucune suggestion",
     "emptySuggestionsSub": "Ajoutez des produits à votre stock pour voir des recettes adaptées.",
     "emptyFavoritesTitle": "Pas encore de favoris",
-    "emptyFavoritesSub": "Marquez des recettes comme favorites depuis leur page détail."
+    "emptyFavoritesSub": "Marquez des recettes comme favorites depuis leur page détail.",
+    "filterAll": "Peu importe",
+    "filterComplete": "Complet",
+    "filter1or2": "1-2 manquants",
+    "generating": "Génération de recettes en cours…",
+    "generatingTitle": "Recherche de recettes…",
+    "generatingSub": "On prépare des idées basées sur votre stock, ça arrive !",
+    "generateMore": "Générer d'autres recettes"
   },
   "recipeDetail": {
     "ingredients": "Ingrédients",

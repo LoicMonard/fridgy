@@ -226,43 +226,83 @@ CREATE POLICY "favorites: foyer members" ON foyer_recettes_favorites
 -- FONCTION SCORING RECETTES
 -- ============================================================
 
--- Calcule le score d'une recette basé sur les ingrédients disponibles.
--- Usage : SELECT * FROM score_recettes_for_foyer('foyer-uuid');
-CREATE OR REPLACE FUNCTION score_recettes_for_foyer(p_foyer_id uuid)
+-- Fonction principale utilisée par l'app (useRecipes hook).
+-- Retourne les recettes avec score >= 0.5 par rapport au stock du foyer.
+-- Filtre les produits périmés. Exposée via supabase.rpc('get_scored_recipes').
+-- Source of truth : scripts/create-scoring-rpc.sql
+CREATE OR REPLACE FUNCTION get_scored_recipes(
+  p_foyer_id  uuid,
+  p_limit     integer DEFAULT 10
+)
 RETURNS TABLE (
-  recette_id      uuid,
-  titre           text,
-  score           float,
-  temps_prep_min  integer,
+  id                uuid,
+  titre             text,
+  score             numeric,
+  matched_count     bigint,
+  total_count       bigint,
+  missing_tags      text[],
+  temps_prep_min    integer,
   temps_cuisson_min integer,
-  preferences     text[]
-) LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  portions_base     integer,
+  preferences       text[]
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
   WITH stock_tags AS (
     SELECT DISTINCT ingredient_tag
-    FROM stock_items
-    WHERE foyer_id = p_foyer_id
-      AND ingredient_tag IS NOT NULL
-      AND (date_peremption IS NULL OR date_peremption >= CURRENT_DATE)
+    FROM   stock_items
+    WHERE  foyer_id = p_foyer_id
+      AND  ingredient_tag IS NOT NULL
+      AND  (date_peremption IS NULL OR date_peremption >= CURRENT_DATE)
+  ),
+  scored AS (
+    SELECT
+      r.id,
+      r.titre,
+      r.temps_prep_min,
+      r.temps_cuisson_min,
+      r.portions_base,
+      r.preferences,
+      COUNT(ri.ingredient_tag) FILTER (WHERE ri.est_optionnel = false)
+        AS total_required,
+      COUNT(ri.ingredient_tag) FILTER (
+        WHERE ri.est_optionnel = false
+          AND ri.ingredient_tag IN (SELECT ingredient_tag FROM stock_tags)
+      ) AS matched_required,
+      ARRAY_REMOVE(
+        ARRAY_AGG(ri.ingredient_tag) FILTER (
+          WHERE ri.est_optionnel = false
+            AND ri.ingredient_tag NOT IN (SELECT ingredient_tag FROM stock_tags)
+        ),
+        NULL
+      ) AS missing
+    FROM recettes r
+    JOIN recette_ingredients ri ON ri.recette_id = r.id
+    GROUP BY r.id
   )
   SELECT
-    r.id,
-    r.titre,
-    COUNT(*) FILTER (
-      WHERE ri.ingredient_tag = ANY(ARRAY(SELECT ingredient_tag FROM stock_tags))
-        AND NOT ri.est_optionnel
-    )::float /
-    NULLIF(COUNT(*) FILTER (WHERE NOT ri.est_optionnel), 0) AS score,
-    r.temps_prep_min,
-    r.temps_cuisson_min,
-    r.preferences
-  FROM recettes r
-  JOIN recette_ingredients ri ON r.id = ri.recette_id
-  GROUP BY r.id
-  HAVING COUNT(*) FILTER (
-    WHERE ri.ingredient_tag = ANY(ARRAY(SELECT ingredient_tag FROM stock_tags))
-      AND NOT ri.est_optionnel
-  )::float /
-  NULLIF(COUNT(*) FILTER (WHERE NOT ri.est_optionnel), 0) >= 0.5
-  ORDER BY score DESC
-  LIMIT 10;
+    s.id,
+    s.titre,
+    CASE
+      WHEN s.total_required = 0 THEN 0
+      ELSE ROUND(s.matched_required::numeric / s.total_required::numeric, 2)
+    END                         AS score,
+    s.matched_required          AS matched_count,
+    s.total_required            AS total_count,
+    COALESCE(s.missing, '{}')   AS missing_tags,
+    s.temps_prep_min,
+    s.temps_cuisson_min,
+    s.portions_base,
+    s.preferences
+  FROM scored s
+  WHERE s.total_required > 0
+    AND ROUND(s.matched_required::numeric / s.total_required::numeric, 2) >= 0.5
+  ORDER BY score DESC, s.matched_required DESC
+  LIMIT p_limit;
+END;
 $$;
+
+GRANT EXECUTE ON FUNCTION get_scored_recipes TO authenticated;

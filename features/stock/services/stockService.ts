@@ -1,6 +1,27 @@
 import { supabase } from '@/lib/supabase';
 import type { ReceiptItemDraft, ScannedProduct, StockItemDraft } from '@/features/scanning/types';
 
+async function resolveIngredientTag(nom: string): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+    const { data, error } = await supabase.functions.invoke('tag-ingredient', {
+      body: { nom },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (error || !data?.tag) return null;
+    return data.tag as string;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveAndUpdateTag(stockItemId: string, nom: string): Promise<void> {
+  const tag = await resolveIngredientTag(nom);
+  if (!tag) return;
+  await supabase.from('stock_items').update({ ingredient_tag: tag }).eq('id', stockItemId);
+}
+
 async function upsertProduit(scannedProduct: ScannedProduct): Promise<string> {
   const { ean, nom, marque, categorie, imageUrl } = scannedProduct;
 
@@ -40,18 +61,25 @@ export async function addToStock(
 ): Promise<void> {
   const produitId = await upsertProduit(draft.scannedProduct);
 
-  const { error } = await supabase.from('stock_items').insert({
+  const knownTag = draft.scannedProduct.ingredientTag || null;
+
+  const { data: inserted, error } = await supabase.from('stock_items').insert({
     foyer_id: foyerId,
     added_by: addedBy,
     produit_id: produitId,
-    ingredient_tag: draft.scannedProduct.ingredientTag || null,
+    ingredient_tag: knownTag,
     quantite: draft.quantite,
     unite: draft.unite,
     date_peremption: draft.datePeremption || null,
     lieu: draft.lieu,
-  });
+  }).select('id').single();
 
   if (error) throw error;
+
+  // Fire-and-forget : résoudre le tag en arrière-plan si non connu
+  if (!knownTag && inserted?.id) {
+    resolveAndUpdateTag(inserted.id as string, draft.scannedProduct.nom);
+  }
 }
 
 export async function cookRecipe(
@@ -109,17 +137,24 @@ export async function addReceiptItemsToStock(
             .split('T')[0]
         : null);
 
-    const { error: stockError } = await supabase.from('stock_items').insert({
+    const knownTag = item.ingredientTag ?? null;
+
+    const { data: insertedItem, error: stockError } = await supabase.from('stock_items').insert({
       foyer_id: foyerId,
       added_by: addedBy,
       produit_id: produit.id,
-      ingredient_tag: item.ingredientTag ?? null,
+      ingredient_tag: knownTag,
       quantite: item.quantite,
       unite: item.unite,
       date_peremption: expiryDate,
       lieu: item.lieu,
-    });
+    }).select('id').single();
 
     if (stockError) throw stockError;
+
+    // Fire-and-forget : résoudre le tag en arrière-plan si non connu
+    if (!knownTag && insertedItem?.id) {
+      resolveAndUpdateTag(insertedItem.id as string, item.nom);
+    }
   }
 }

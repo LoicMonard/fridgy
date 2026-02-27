@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export interface ScoredRecipe {
@@ -22,11 +22,13 @@ export interface FavoriteRecipe {
   portionsBase: number;
 }
 
-export function useRecipes() {
+export function useRecipes(minScore = 0.5) {
   const [suggestions, setSuggestions] = useState<ScoredRecipe[]>([]);
   const [favorites, setFavorites] = useState<FavoriteRecipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const hasTriedGeneration = useRef(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -46,17 +48,19 @@ export function useRecipes() {
 
       const foyerId = membre.foyer_id as string;
 
+      // Use higher limit when fetching with lower threshold to have enough for client-side filter
+      const limit = minScore < 0.5 ? 50 : 20;
+
       const [rpcRes, favRes] = await Promise.all([
-        supabase.rpc('get_scored_recipes', { p_foyer_id: foyerId, p_limit: 20 }),
+        supabase.rpc('get_scored_recipes', { p_foyer_id: foyerId, p_limit: limit, p_min_score: minScore }),
         supabase
           .from('foyer_recettes_favorites')
           .select('recettes(id, titre, temps_prep_min, temps_cuisson_min, portions_base)')
           .eq('foyer_id', foyerId),
       ]);
 
-      if (rpcRes.data) {
-        setSuggestions(
-          (rpcRes.data as any[]).map((r) => ({
+      const loadedSuggestions: ScoredRecipe[] = rpcRes.data
+        ? (rpcRes.data as any[]).map((r) => ({
             id: r.id as string,
             titre: r.titre as string,
             score: Number(r.score),
@@ -67,9 +71,10 @@ export function useRecipes() {
             tempsCuissonMin: r.temps_cuisson_min as number | null,
             portionsBase: r.portions_base as number,
             preferences: (r.preferences as string[]) ?? [],
-          })),
-        );
-      }
+          }))
+        : [];
+
+      setSuggestions(loadedSuggestions);
 
       if (favRes.data) {
         setFavorites(
@@ -85,11 +90,54 @@ export function useRecipes() {
             })),
         );
       }
+
+      // Auto-generate recipes when stock is too sparse (once per mount, not on pull-to-refresh)
+      if (loadedSuggestions.length < 3 && !hasTriedGeneration.current && !isRefresh) {
+        hasTriedGeneration.current = true;
+        // Release loading so the UI renders current state + banner while Gemini runs
+        setLoading(false);
+        setRefreshing(false);
+        setGenerating(true);
+        try {
+          const { error } = await supabase.functions.invoke('generate-recipes', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (error) {
+            console.warn('[useRecipes] generate-recipes error:', error);
+          } else {
+            await load(false);
+          }
+        } finally {
+          setGenerating(false);
+        }
+        return;
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [minScore]);
+
+  const generateMore = useCallback(async () => {
+    if (generating) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    setGenerating(true);
+    try {
+      const { error } = await supabase.functions.invoke('generate-recipes', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) {
+        console.warn('[useRecipes] generateMore error:', error);
+      } else {
+        await load(false);
+      }
+    } finally {
+      setGenerating(false);
+    }
+  }, [generating, load]);
+
+  const refetch = useCallback(() => load(true), [load]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -98,6 +146,8 @@ export function useRecipes() {
     favorites,
     loading,
     refreshing,
-    refetch: () => load(true),
+    generating,
+    refetch,
+    generateMore,
   };
 }

@@ -3,7 +3,8 @@
 
 CREATE OR REPLACE FUNCTION get_scored_recipes(
   p_foyer_id  uuid,
-  p_limit     integer DEFAULT 10
+  p_limit     integer DEFAULT 10,
+  p_min_score numeric DEFAULT 0.5
 )
 RETURNS TABLE (
   id                uuid,
@@ -27,6 +28,7 @@ BEGIN
     FROM   stock_items
     WHERE  foyer_id = p_foyer_id
       AND  ingredient_tag IS NOT NULL
+      AND  (date_peremption IS NULL OR date_peremption >= CURRENT_DATE)
   ),
   scored AS (
     SELECT
@@ -69,6 +71,7 @@ BEGIN
     s.preferences
   FROM scored s
   WHERE s.total_required > 0
+    AND ROUND(s.matched_required::numeric / s.total_required::numeric, 2) >= p_min_score
   ORDER BY score DESC, s.matched_required DESC
   LIMIT p_limit;
 END;

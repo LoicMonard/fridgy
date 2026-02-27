@@ -1,8 +1,12 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { addReceiptItemsToStock } from '@/features/stock/services/stockService';
+import type { ReceiptItemDraft } from '@/features/scanning/types';
 
 const MOCK_RECEIPT_ITEMS = [
   { nom: 'Lait demi-écrémé 1L', ingredientTag: 'lait', quantiteEstimee: 1, unite: 'unite', dureeConservationJours: 7 },
@@ -12,11 +16,80 @@ const MOCK_RECEIPT_ITEMS = [
   { nom: 'Poulet rôti', ingredientTag: 'poulet', quantiteEstimee: 1, unite: 'unite', dureeConservationJours: 3 },
   { nom: 'Carottes 1kg', ingredientTag: 'carotte', quantiteEstimee: 1, unite: 'kg', dureeConservationJours: 14 },
   { nom: 'Pâtes fusilli 500g', ingredientTag: 'pates', quantiteEstimee: 500, unite: 'g', dureeConservationJours: null },
-  { nom: 'Sauce tomate basilic', ingredientTag: 'sauce tomate', quantiteEstimee: 1, unite: 'unite', dureeConservationJours: 5 },
+  { nom: 'Sauce tomate basilic', ingredientTag: 'sauce_tomate', quantiteEstimee: 1, unite: 'unite', dureeConservationJours: 5 },
+];
+
+const MOCK_KITCHEN_STOCK: ReceiptItemDraft[] = [
+  // Légumes (frigo)
+  { nom: 'Carottes', ingredientTag: 'carotte', quantite: 1, unite: 'kg', lieu: 'frigo' },
+  { nom: 'Tomates', ingredientTag: 'tomate', quantite: 6, unite: 'pièce', lieu: 'frigo' },
+  { nom: 'Oignons', ingredientTag: 'oignon', quantite: 3, unite: 'pièce', lieu: 'placard' },
+  { nom: 'Ail', ingredientTag: 'ail', quantite: 1, unite: 'pièce', lieu: 'placard' },
+  { nom: 'Courgettes', ingredientTag: 'courgette', quantite: 2, unite: 'pièce', lieu: 'frigo' },
+  { nom: 'Poivrons', ingredientTag: 'poivron', quantite: 2, unite: 'pièce', lieu: 'frigo' },
+  { nom: 'Épinards', ingredientTag: 'epinard', quantite: 200, unite: 'g', lieu: 'frigo' },
+  { nom: 'Champignons', ingredientTag: 'champignon', quantite: 250, unite: 'g', lieu: 'frigo' },
+  { nom: 'Pommes de terre', ingredientTag: 'pomme_de_terre', quantite: 1, unite: 'kg', lieu: 'placard' },
+  { nom: 'Poireaux', ingredientTag: 'poireau', quantite: 2, unite: 'pièce', lieu: 'frigo' },
+  // Viandes (frigo)
+  { nom: 'Filets de poulet', ingredientTag: 'poulet', quantite: 2, unite: 'pièce', lieu: 'frigo', dureeConservationJours: 3 },
+  { nom: 'Boeuf haché', ingredientTag: 'boeuf', quantite: 400, unite: 'g', lieu: 'frigo', dureeConservationJours: 2 },
+  { nom: 'Lardons', ingredientTag: 'lardons', quantite: 200, unite: 'g', lieu: 'frigo', dureeConservationJours: 7 },
+  { nom: 'Jambon', ingredientTag: 'jambon', quantite: 4, unite: 'pièce', lieu: 'frigo', dureeConservationJours: 5 },
+  // Poissons (congélateur)
+  { nom: 'Saumon', ingredientTag: 'saumon', quantite: 2, unite: 'pièce', lieu: 'congelateur' },
+  { nom: 'Thon en conserve', ingredientTag: 'thon', quantite: 2, unite: 'boîte', lieu: 'placard' },
+  // Produits laitiers (frigo)
+  { nom: 'Lait', ingredientTag: 'lait', quantite: 1, unite: 'L', lieu: 'frigo', dureeConservationJours: 7 },
+  { nom: 'Beurre', ingredientTag: 'beurre', quantite: 1, unite: 'pièce', lieu: 'frigo', dureeConservationJours: 30 },
+  { nom: 'Crème fraîche', ingredientTag: 'creme', quantite: 20, unite: 'cl', lieu: 'frigo', dureeConservationJours: 10 },
+  { nom: 'Fromage râpé', ingredientTag: 'fromage', quantite: 200, unite: 'g', lieu: 'frigo', dureeConservationJours: 14 },
+  { nom: 'Oeufs', ingredientTag: 'oeuf', quantite: 6, unite: 'pièce', lieu: 'frigo', dureeConservationJours: 28 },
+  // Féculents (placard)
+  { nom: 'Pâtes', ingredientTag: 'pates', quantite: 500, unite: 'g', lieu: 'placard' },
+  { nom: 'Riz', ingredientTag: 'riz', quantite: 500, unite: 'g', lieu: 'placard' },
+  { nom: 'Farine', ingredientTag: 'farine', quantite: 500, unite: 'g', lieu: 'placard' },
+  // Légumineuses (placard)
+  { nom: 'Lentilles', ingredientTag: 'lentille', quantite: 500, unite: 'g', lieu: 'placard' },
+  { nom: 'Pois chiches', ingredientTag: 'pois_chiche', quantite: 400, unite: 'g', lieu: 'placard' },
+  // Condiments (placard)
+  { nom: 'Huile d\'olive', ingredientTag: 'huile_olive', quantite: 1, unite: 'L', lieu: 'placard' },
+  { nom: 'Sauce tomate', ingredientTag: 'sauce_tomate', quantite: 2, unite: 'boîte', lieu: 'placard' },
+  { nom: 'Concentré de tomate', ingredientTag: 'concentre_tomate', quantite: 1, unite: 'boîte', lieu: 'placard' },
+  { nom: 'Moutarde', ingredientTag: 'moutarde', quantite: 1, unite: 'pièce', lieu: 'placard' },
+  { nom: 'Sauce soja', ingredientTag: 'sauce_soja', quantite: 1, unite: 'pièce', lieu: 'placard' },
+  // Épices (placard)
+  { nom: 'Sel', ingredientTag: 'sel', quantite: 1, unite: 'pièce', lieu: 'placard' },
+  { nom: 'Poivre', ingredientTag: 'poivre', quantite: 1, unite: 'pièce', lieu: 'placard' },
+  { nom: 'Herbes de Provence', ingredientTag: 'herbes_de_provence', quantite: 1, unite: 'pièce', lieu: 'placard' },
+  { nom: 'Cumin', ingredientTag: 'cumin', quantite: 1, unite: 'pièce', lieu: 'placard' },
+  { nom: 'Curry', ingredientTag: 'curry', quantite: 1, unite: 'pièce', lieu: 'placard' },
+  { nom: 'Paprika', ingredientTag: 'paprika', quantite: 1, unite: 'pièce', lieu: 'placard' },
 ];
 
 export default function AddScreen() {
   const { t } = useTranslation();
+  const [loadingMock, setLoadingMock] = useState(false);
+
+  async function handleAddKitchenStock() {
+    setLoadingMock(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: membre } = await supabase
+        .from('foyer_membres')
+        .select('foyer_id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (!membre?.foyer_id) return;
+      await addReceiptItemsToStock(MOCK_KITCHEN_STOCK, membre.foyer_id as string, session.user.id);
+      Alert.alert('Stock ajouté', `${MOCK_KITCHEN_STOCK.length} ingrédients ajoutés au stock.`);
+    } catch (e) {
+      Alert.alert('Erreur', String(e));
+    } finally {
+      setLoadingMock(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,6 +138,24 @@ export default function AddScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
         </TouchableOpacity>
+
+        {/* DEBUG ONLY — remove before release */}
+        <TouchableOpacity
+          style={[styles.option, styles.debugOption, loadingMock && { opacity: 0.6 }]}
+          onPress={handleAddKitchenStock}
+          disabled={loadingMock}
+        >
+          <View style={[styles.iconBox, { backgroundColor: '#F3F4F6' }]}>
+            {loadingMock
+              ? <ActivityIndicator size="small" color="#6B7280" />
+              : <Ionicons name="flask-outline" size={26} color="#6B7280" />
+            }
+          </View>
+          <View style={styles.optionText}>
+            <Text style={[styles.optionTitle, { color: '#6B7280' }]}>Remplir stock de test</Text>
+            <Text style={styles.optionSub}>Ajoute ~36 ingrédients communs</Text>
+          </View>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -92,5 +183,6 @@ const styles = StyleSheet.create({
   },
   optionText: { flex: 1 },
   optionTitle: { fontSize: 16, fontWeight: '600', color: '#111111' },
+  optionSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
   debugOption: { borderWidth: 1, borderColor: '#FDE68A', borderStyle: 'dashed' },
 });

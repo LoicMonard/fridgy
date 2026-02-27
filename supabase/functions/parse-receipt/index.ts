@@ -19,20 +19,26 @@ interface GeminiResponse {
   }>;
 }
 
-const PROMPT = `Tu es un assistant qui analyse une photo de ticket de caisse français.
+function buildPrompt(tags: string[]): string {
+  return `Tu es un assistant qui analyse une photo de ticket de caisse français.
 Identifie tous les produits alimentaires visibles et retourne un objet JSON avec une clé "items" contenant un tableau.
 
 Pour chaque produit alimentaire, retourne un objet avec ces champs :
 - nom : string — nom lisible (corrige les abréviations, ex: "YAO FRT 4X125" → "Yaourt aux fruits 4x125g")
-- ingredient_tag : string | null — tag normalisé en minuscules sans accents (ex: "yaourt", "lait", "beurre"), null si incertain
+- ingredient_tag : string | null — tag le plus spécifique de la liste ci-dessous, ou null si aucun ne correspond
 - quantite_estimee : number — quantité estimée (défaut 1)
 - unite : string — "unite", "kg", "g", "L", "mL", "lot"
 - duree_conservation_jours : number | null — estimation selon le type de produit, null si inconnu
 
+Liste des tags autorisés pour ingredient_tag (utilise UNIQUEMENT ces valeurs ou null) :
+${tags.join(', ')}
+
 Règles :
+- Choisis le tag le plus spécifique : "Emmental râpé" → emmental, "Fromage râpé 4 fromages" → fromage
 - Ignore les articles non alimentaires (produits ménagers, hygiène, etc.)
 - Ignore les lignes de prix, totaux, remises
 - Retourne UNIQUEMENT ce format JSON : {"items": [...]}`;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -80,6 +86,10 @@ Deno.serve(async (req) => {
     const geminiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
 
+    // Fetch available ingredient tags to constrain Gemini output
+    const { data: ingredients } = await supabase.from('ingredients').select('tag').order('tag');
+    const tags = (ingredients ?? []).map((i: { tag: string }) => i.tag);
+
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -87,7 +97,7 @@ Deno.serve(async (req) => {
         contents: [{
           parts: [
             { inline_data: { mime_type: mimeType, data: imageBase64 } },
-            { text: PROMPT },
+            { text: buildPrompt(tags) },
           ],
         }],
         generationConfig: {
@@ -121,9 +131,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const items: ParsedItem[] = Array.isArray(parsed)
+    const rawItems: ParsedItem[] = Array.isArray(parsed)
       ? parsed as ParsedItem[]
       : (parsed as { items?: ParsedItem[] }).items ?? [];
+
+    const tagSet = new Set(tags);
+    const items = rawItems.map((item) => ({
+      ...item,
+      // S'assurer que le tag retourné existe bien en base
+      ingredient_tag: item.ingredient_tag && tagSet.has(item.ingredient_tag)
+        ? item.ingredient_tag
+        : null,
+    }));
 
     return new Response(JSON.stringify({ items }), {
       status: 200,
