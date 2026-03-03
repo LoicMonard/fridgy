@@ -5,16 +5,33 @@ import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import {
+  Gabarito_400Regular,
+  Gabarito_500Medium,
+  Gabarito_600SemiBold,
+  Gabarito_700Bold,
+} from '@expo-google-fonts/gabarito';
+import { Graduate_400Regular } from '@expo-google-fonts/graduate';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useFoyer } from '@/features/foyer/hooks/useFoyer';
 import { createFoyer } from '@/features/foyer/services/foyerService';
+import { colors } from '@/lib/theme';
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Gabarito_400Regular,
+    Gabarito_500Medium,
+    Gabarito_600SemiBold,
+    Gabarito_700Bold,
+    Graduate_400Regular,
+  });
+
   const { session, loading: authLoading } = useAuth();
   const { hasFoyer, loading: foyerLoading } = useFoyer(session?.user.id);
   const creatingFoyer = useRef(false);
 
-  const loading = authLoading || (!!session && foyerLoading);
+  const loading = !fontsLoaded || authLoading || (!!session && foyerLoading);
 
   useEffect(() => {
     if (loading) return;
@@ -42,8 +59,8 @@ export default function RootLayout() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F3F0' }}>
-        <ActivityIndicator size="large" color="#FF8400" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.light.background }}>
+        <ActivityIndicator size="large" color={colors.light.primary} />
       </View>
     );
   }
