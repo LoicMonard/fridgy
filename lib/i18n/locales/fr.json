@@ -33,12 +33,15 @@
     "emptyState": "Votre stock est vide",
     "addProduct": "Ajouter un produit",
     "expiringProducts": "Produits bientôt périmés",
+    "all": "Tout",
     "frigo": "Frigo",
     "placard": "Placard",
     "congelateur": "Congélateur",
     "deleteConfirmTitle": "Supprimer ce produit ?",
     "noItemsInLieu": "Aucun produit ici",
-    "noItemsInLieuSub": "Ajoutez des produits en scannant un code-barres ou un ticket de caisse."
+    "noItemsInLieuSub": "Ajoutez des produits en scannant un code-barres ou un ticket de caisse.",
+    "searchPlaceholder": "Rechercher un produit",
+    "filter": "Filtrer"
   },
   "add": {
     "title": "Ajouter",
